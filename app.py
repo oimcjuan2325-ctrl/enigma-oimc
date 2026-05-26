@@ -72,10 +72,11 @@ else:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-        # Mostramos mensajes cronológicamente (sin reversed)
-        for m in m_g: st.write(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+        for m in m_g: 
+            st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
+            st.code(m['msg'])
         
-        st.divider() # Separador visual para la barra de entrada
+        st.divider()
         msg_g = st.text_input("Escribir al grupo:", key="input_grupal")
         if st.button("Enviar al grupo"):
             if msg_g:
@@ -90,12 +91,12 @@ else:
         dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
         db = cargar_db()
         m_i = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
-        # Mostramos mensajes cronológicamente
         for m in m_i:
             label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
-            st.write(f"**{label}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+            st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
+            st.code(m['msg'])
             
-        st.divider() # Separador visual para la barra de entrada
+        st.divider()
         msg_i = st.text_input(f"Escribir a {dest}:", key="input_indiv")
         if st.button(f"Enviar mensaje privado"):
             if msg_i:
@@ -111,4 +112,5 @@ else:
             sel_u = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
             db = cargar_db()
             for m in [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]:
-                st.write(f"({m['fecha']}) De: {m['de']} | A: {m['a']} | `{m['msg']}`")
+                st.markdown(f"({m['fecha']}) De: **{m['de']}** | A: **{m['a']}**")
+                st.code(m['msg'])
