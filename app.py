@@ -58,7 +58,7 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
+    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin", "🧹 Gestión"] if u == "MAQUINA ENIGMA" else []))
     
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
@@ -84,7 +84,7 @@ else:
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
                 guardar_db(db)
-                st.rerun() # Esto borra el input al recargar
+                st.rerun()
 
     with tabs[3]:
         st.subheader("👤 Chat Individual")
@@ -104,13 +104,35 @@ else:
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
                 guardar_db(db)
-                st.rerun() # Esto borra el input al recargar
+                st.rerun()
             
     if u == "MAQUINA ENIGMA":
-        with tabs[-1]:
+        with tabs[4]:
             st.subheader("🛠️ Auditoría de Inteligencia")
             sel_u = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
             db = cargar_db()
             for m in [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]:
                 st.markdown(f"({m['fecha']}) De: **{m['de']}** | A: **{m['a']}**")
                 st.code(m['msg'])
+        
+        with tabs[5]: # Pestaña de Gestión (Eliminación)
+            st.subheader("🧹 Gestión de Archivos (Eliminación)")
+            tipo_chat = st.selectbox("Tipo de chat a gestionar:", ["CHAT GRUPAL", "CHAT INDIVIDUAL"])
+            db = cargar_db()
+            
+            if tipo_chat == "CHAT GRUPAL":
+                mensajes_filtrados = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+            else:
+                mensajes_filtrados = [m for m in db["mensajes"] if m["a"] != "CHAT GRUPAL"]
+                
+            if not mensajes_filtrados: st.info("No hay mensajes en este canal.")
+            else:
+                # Mostramos los mensajes con un selector para borrar
+                for m in mensajes_filtrados:
+                    c1, c2 = st.columns([0.8, 0.2])
+                    with c1: st.code(f"{m['fecha']} | De: {m['de']} | A: {m['a']} | Msg: {m['msg']}")
+                    with c2:
+                        if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}"):
+                            db["mensajes"] = [x for x in db["mensajes"] if x != m]
+                            guardar_db(db)
+                            st.rerun()
