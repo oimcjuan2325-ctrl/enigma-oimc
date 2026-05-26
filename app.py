@@ -52,23 +52,13 @@ else:
     u = st.session_state.usuario
     db = cargar_db()
     
-    # --- BARRA LATERAL ---
+    # --- BARRA LATERAL LIMPIA ---
     st.sidebar.header(f"Operador: {u}")
     if st.sidebar.button("🔒 Cerrar Sesión"):
         for m in db["mensajes"]:
             if m["a"] == u: m["leido"] = True
         guardar_db(db)
         st.session_state.usuario = None; st.rerun()
-    
-    # Notificaciones permanentes abajo del botón
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📢 Avisos Directos:")
-    pendientes = [m for m in db["mensajes"] if m["a"] == u and not m.get("leido", False)]
-    if pendientes:
-        for persona in set([m["de"] for m in pendientes]):
-            st.sidebar.warning(f"⚠️ {persona} te ha enviado un mensaje.")
-    else:
-        st.sidebar.success("Todo al día.")
     
     tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🧹 Gestión"] if u == "MAQUINA ENIGMA" else []))
     
@@ -91,16 +81,21 @@ else:
 
     with tabs[3]:
         st.subheader("👤 Chat Individual")
+        
+        # Notificación solo aquí
+        mensajes_nuevos = [m for m in db["mensajes"] if m["a"] == u and not m.get("leido", False)]
+        for persona in set([m["de"] for m in mensajes_nuevos]):
+            st.warning(f"⚠️ {persona} te ha enviado un mensaje.")
+        
         dest = st.selectbox("Seleccionar persona:", [c for c in CUENTAS_PIN.keys() if c != u])
         
-        # Marcar leído al seleccionar la persona
+        # Marcar leído al seleccionar
         for m in db["mensajes"]:
             if m["a"] == u and m["de"] == dest: m["leido"] = True
         guardar_db(db)
         
         for m in [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]:
-            label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
-            st.markdown(f"**{label}** ({m['fecha']})")
+            st.caption(f"{'📤 Tú' if m['de'] == u else f'📥 {m['de']}'} ({m['fecha']})")
             st.code(m['msg'])
         
         msg_i = st.text_area(f"Escribir a {dest}:", height=100)
@@ -112,4 +107,25 @@ else:
         with tabs[4]:
             st.subheader("🧹 Gestión y Auditoría")
             tipo = st.radio("¿Qué auditar?", ["Chat Grupal", "Chat Individual"])
-            # ... (Lógica de gestión igual que antes)
+            
+            if not db["mensajes"]: st.info("Base de datos vacía.")
+            elif tipo == "Chat Grupal":
+                for m in [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]:
+                    c1, c2 = st.columns([0.8, 0.2])
+                    with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
+                    with c2:
+                        if st.button("Borrar", key=f"g_{m['fecha']}_{m['de']}"):
+                            db["mensajes"].remove(m); guardar_db(db); st.rerun()
+            else:
+                p_a = st.selectbox("1. Elige operador:", [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"])
+                mensajes_a = [m for m in db["mensajes"] if (m['de'] == p_a or m['a'] == p_a) and m['a'] != "CHAT GRUPAL"]
+                contactos = sorted(list(set([m['a'] if m['de'] == p_a else m['de'] for m in mensajes_a])))
+                if contactos:
+                    p_b = st.selectbox("2. Elige con quién chateó:", contactos)
+                    for m in [m for m in mensajes_a if m['de'] == p_b or m['a'] == p_b]:
+                        c1, c2 = st.columns([0.8, 0.2])
+                        with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
+                        with c2:
+                            if st.button("Borrar", key=f"p_{m['fecha']}_{m['de']}"):
+                                db["mensajes"].remove(m); guardar_db(db); st.rerun()
+                else: st.info("Sin registros.")
