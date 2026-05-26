@@ -64,21 +64,24 @@ else:
     
     tabs = st.tabs(lista_tabs)
     
+    # 0. Cifrar
     with tabs[0]:
-        t = st.text_area("Texto a cifrar (Párrafos permitidos):", height=150, max_chars=500)
+        t = st.text_area("Texto a cifrar:", height=150, max_chars=500)
         if t: st.code(traducir(t, "cifrar"))
             
+    # 1. Descifrar (Optimizado para pegar)
     with tabs[1]:
-        t = st.text_area("Jeroglífico a descifrar (Párrafos permitidos):", height=150, max_chars=500)
-        if t: st.code(traducir(t, "descifrar"))
+        t = st.text_area("Pega aquí el jeroglífico:", height=150, max_chars=500)
+        if t: st.write(traducir(t, "descifrar"))
             
+    # 2. Chat Grupal (Uso de Markdown para formato WhatsApp)
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
         for m in m_g: 
             st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
-            st.code(m['msg'])
+            st.markdown(f"> {m['msg']}") # Bloque tipo cita (estilo WhatsApp)
         st.divider()
         msg_g = st.text_area("Escribir mensaje:", key="input_grupal", height=150, max_chars=500)
         if st.button("Enviar al grupo"):
@@ -89,6 +92,7 @@ else:
                 guardar_db(db)
                 st.rerun()
 
+    # 3. Chat Individual
     with tabs[3]:
         st.subheader("👤 Chat Individual")
         dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
@@ -97,10 +101,10 @@ else:
         for m in m_i:
             label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
             st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
-            st.code(m['msg'])
+            st.markdown(f"> {m['msg']}")
         st.divider()
         msg_i = st.text_area(f"Escribir a {dest}:", key="input_indiv", height=150, max_chars=500)
-        if st.button(f"Enviar mensaje privado"):
+        if st.button("Enviar mensaje privado"):
             if msg_i:
                 f = datetime.now().strftime("%d/%m/%Y")
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
@@ -113,7 +117,6 @@ else:
             st.subheader("🧹 Gestión y Auditoría")
             tipo_filtro = st.selectbox("Seleccionar canal:", ["AUDITAR CUENTA", "GESTIONAR CHAT GRUPAL", "GESTIONAR CHAT INDIVIDUAL"])
             db = cargar_db()
-            
             if tipo_filtro == "AUDITAR CUENTA":
                 sel_u = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
                 mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
@@ -124,13 +127,11 @@ else:
                 user_sel = st.selectbox("Elegir operador:", opciones_usuarios)
                 mensajes_a_gestionar = [m for m in db["mensajes"] if (m["de"] == user_sel or m["a"] == user_sel) and m["a"] != "CHAT GRUPAL"]
             
-            if not mensajes_a_gestionar: st.info("No hay mensajes encontrados.")
-            else:
-                for m in mensajes_a_gestionar:
-                    c1, c2 = st.columns([0.8, 0.2])
-                    with c1: st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
-                    with c2:
-                        if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}_{m['fecha']}"):
-                            db["mensajes"] = [x for x in db["mensajes"] if x != m]
-                            guardar_db(db)
-                            st.rerun()
+            for m in mensajes_a_gestionar:
+                c1, c2 = st.columns([0.8, 0.2])
+                with c1: st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
+                with c2:
+                    if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}_{m['fecha']}"):
+                        db["mensajes"] = [x for x in db["mensajes"] if x != m]
+                        guardar_db(db)
+                        st.rerun()
