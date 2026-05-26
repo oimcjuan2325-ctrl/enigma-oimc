@@ -4,11 +4,11 @@ import os
 from datetime import datetime
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Enigma O.I.M.C.", layout="wide")
+st.set_page_config(page_title="Máquina Enigma O.I.M.C.", layout="wide")
 DB_FILE = "mensajes.json"
 
 JEROGLIFICOS = {
-    "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
+    "A": "⭡", "B": "𝌇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
     "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": '"亗"', "N": "⚡", "Ñ": "⛩", 
     "O": "☉", "P": "⭧", "Q": "⿿", "R": "♾", "S": "🜔", "T": "⏃", "U": "⊔", 
     "V": "⪧", "W": "⎿", "X": "⧖", "Y": "↟", "Z": "⟐"
@@ -38,7 +38,7 @@ def traducir(texto, tipo="cifrar"):
     for l, s in JEROGLIFICOS.items(): res = res.replace(s, l)
     return res
 
-# --- APP ---
+# --- LÓGICA DE APP ---
 if "usuario" not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
@@ -67,7 +67,7 @@ else:
         t = st.text_area("Jeroglífico a descifrar:")
         if t: st.code(traducir(t, "descifrar"))
     with tabs[2]:
-        dest = st.selectbox("Destino:", ["CHAT GRUPAL"] + list(CUENTAS_PIN.keys()))
+        dest = st.selectbox("Destinatario:", ["CHAT GRUPAL"] + list(CUENTAS_PIN.keys()))
         msg = st.text_input("Mensaje:")
         if st.button("Transmitir"):
             db = cargar_db()
@@ -75,7 +75,7 @@ else:
             ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
             db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
             guardar_db(db)
-            st.success(f"Transmitido (ID: {ids:03d})")
+            st.success(f"Mensaje enviado con ID: {ids:03d}")
     with tabs[3]:
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
@@ -89,29 +89,32 @@ else:
         else:
             for m in m_r: st.markdown(f"**De {m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
     with tabs[5]:
-        t_imp = st.text_area("Texto para imprimir:")
-        if st.button("Generar documento"):
-            st.write("### Sello: O.I.M.C.")
-            st.code(t_imp)
+        st.write("### 🖨️ Estación de Impresión O.I.M.C.")
+        t_imp = st.text_area("Introduce tu texto aquí:")
+        op = st.radio("Acción:", ["1. Dejar tal cual", "2. Cifrar texto", "3. Descifrar texto"])
+        if st.button("Preparar documento"):
+            if "2" in op: final = traducir(t_imp, "cifrar")
+            elif "3" in op: final = traducir(t_imp, "descifrar")
+            else: final = t_imp
+            st.code(final)
+            st.warning("⚠️ AHORA PARA IMPRIMIR TU MENSAJE TIENES QUE PULSAR CONTROL + P EN TU TECLADO.")
             
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
             st.subheader("🛠️ Auditoría de Inteligencia")
-            sel_user = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
+            sel_u = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
             db = cargar_db()
-            col1, col2 = st.columns(2)
-            with col1:
+            c1, c2 = st.columns(2)
+            with c1:
                 st.write("#### 📤 Enviados")
-                for m in [m for m in db["mensajes"] if m["de"] == sel_user]:
-                    st.write(f"Para: {m['a']} | `{m['msg']}`")
-            with col2:
+                for m in [m for m in db["mensajes"] if m["de"] == sel_u]: st.write(f"Para: {m['a']} | `{m['msg']}`")
+            with c2:
                 st.write("#### 📥 Recibidos")
-                for m in [m for m in db["mensajes"] if m["a"] == sel_user]:
-                    st.write(f"De: {m['de']} | `{m['msg']}`")
+                for m in [m for m in db["mensajes"] if m["a"] == sel_u]: st.write(f"De: {m['de']} | `{m['msg']}`")
             st.markdown("---")
             st.markdown("### 📜 Abecedario Universal")
             letras = list(JEROGLIFICOS.keys())
-            tabla = "| Carácter | Jeroglífico | | Carácter | Jeroglífico |\n|:---:|:---:|:---:|:---:|:---:|\n"
+            t = "| C | Jeroglífico | | C | Jeroglífico |\n|:---:|:---:|:---:|:---:|:---:|\n"
             for i in range(13):
-                tabla += f"| {letras[i]} | `{JEROGLIFICOS[letras[i]]}` | | {letras[i+13]} | `{JEROGLIFICOS[letras[i+13]]}` |\n"
-            st.markdown(tabla)
+                t += f"| {letras[i]} | `{JEROGLIFICOS[letras[i]]}` | | {letras[i+13]} | `{JEROGLIFICOS[letras[i+13]]}` |\n"
+            st.markdown(t)
