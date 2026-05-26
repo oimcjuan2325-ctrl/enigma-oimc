@@ -58,67 +58,52 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    lista_tabs = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
+    # Definición de pestañas
+    tabs_list = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
     if u == "MAQUINA ENIGMA":
-        lista_tabs.append("🧹 Gestión y Auditoría")
+        tabs_list.append("🧹 Gestión y Auditoría")
+        
+    tabs = st.tabs(tabs_list)
     
-    tabs = st.tabs(lista_tabs)
-    
-    # Mantenemos las áreas de texto multilínea para los párrafos
+    # Pestañas normales...
     with tabs[0]:
         t = st.text_area("Texto a cifrar:", height=150)
-        if t: st.markdown(f"**Resultado:**\n\n{traducir(t, 'cifrar')}")
-            
+        if t: st.code(traducir(t, "cifrar"))
     with tabs[1]:
         t = st.text_area("Jeroglífico a descifrar:", height=150)
-        if t: st.markdown(f"**Resultado:**\n\n{traducir(t, 'descifrar')}")
-            
+        if t: st.code(traducir(t, "descifrar"))
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
-        m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-        for m in m_g: 
+        for m in [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]:
             st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
-            st.markdown(f"```\n{m['msg']}\n```") # Usamos bloque de código visual pero respetando saltos
-        st.divider()
-        msg_g = st.text_area("Escribir al grupo:", key="input_grupal", height=100)
+            st.code(m['msg'])
+        msg_g = st.text_area("Escribir:", height=100)
         if st.button("Enviar al grupo"):
-            if msg_g:
-                f = datetime.now().strftime("%d/%m/%Y")
-                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-                db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-                guardar_db(db); st.rerun()
+            f = datetime.now().strftime("%d/%m/%Y")
+            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+            guardar_db(db); st.rerun()
 
-    with tabs[3]:
-        st.subheader("👤 Chat Individual")
-        dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
-        db = cargar_db()
-        m_i = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
-        for m in m_i:
-            label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
-            st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
-            st.markdown(f"```\n{m['msg']}\n```")
-        st.divider()
-        msg_i = st.text_area(f"Escribir a {dest}:", key="input_indiv", height=100)
-        if st.button(f"Enviar mensaje privado"):
-            if msg_i:
-                f = datetime.now().strftime("%d/%m/%Y")
-                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-                db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-                guardar_db(db); st.rerun()
-            
+    # --- SECCIÓN ADMINISTRACIÓN (Solo MAQUINA ENIGMA) ---
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
-            st.subheader("🧹 Gestión y Auditoría")
-            # ... (Lógica de gestión igual que antes) ...
+            st.subheader("🧹 Gestión y Auditoría de Inteligencia")
             db = cargar_db()
-            # Mostrando mensajes de forma multilínea
-            for m in db["mensajes"]:
+            tipo_auditoria = st.selectbox("Filtrar auditoría:", ["Ver Todos", "Por Usuario", "Chat Grupal"])
+            
+            mensajes_mostrar = db["mensajes"]
+            if tipo_auditoria == "Por Usuario":
+                user_sel = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
+                mensajes_mostrar = [m for m in db["mensajes"] if m["de"] == user_sel or m["a"] == user_sel]
+            elif tipo_auditoria == "Chat Grupal":
+                mensajes_mostrar = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+
+            for m in mensajes_mostrar:
                 col1, col2 = st.columns([0.8, 0.2])
                 with col1:
-                    st.markdown(f"**{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']}**")
-                    st.markdown(f"```\n{m['msg']}\n```")
+                    st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
                 with col2:
-                    if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}_{m['fecha']}"):
-                        db["mensajes"] = [x for x in db["mensajes"] if x != m]
+                    if st.button("Borrar", key=f"del_{m['id']}_{m['de']}"):
+                        db["mensajes"].remove(m)
                         guardar_db(db); st.rerun()
