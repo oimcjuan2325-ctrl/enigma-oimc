@@ -20,7 +20,6 @@ CUENTAS_PIN = {
     "Erika": "7562", "Nahia": "9786", "Amets": "1053"
 }
 
-# --- FUNCIONES ---
 def cargar_db():
     if not os.path.exists(DB_FILE): return {"mensajes": []}
     try:
@@ -38,7 +37,6 @@ def traducir(texto, tipo="cifrar"):
     for l, s in JEROGLIFICOS.items(): res = res.replace(s, l)
     return res
 
-# --- LÓGICA DE LOGIN ---
 if "usuario" not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
@@ -53,12 +51,30 @@ if st.session_state.usuario is None:
             else: st.error("Acceso denegado")
 else:
     u = st.session_state.usuario
+    db = cargar_db()
+    
+    # Cálculo de notificaciones
+    mensajes_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+    mensajes_i = [m for m in db["mensajes"] if m["a"] == u]
+    
+    count_g = len(mensajes_g)
+    count_i = len(mensajes_i)
+    
+    # --- INTERFAZ ---
     st.sidebar.header(f"Operador: {u}")
     if st.sidebar.button("🔒 Cerrar Sesión"):
-        st.session_state.usuario = None
-        st.rerun()
+        st.session_state.usuario = None; st.rerun()
     
-    tabs_list = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
+    # Notificaciones en Sidebar
+    st.sidebar.markdown("---")
+    if count_g > 0: st.sidebar.warning(f"💬 Grupo: {count_g} mensajes")
+    if count_i > 0: st.sidebar.error(f"👤 Privados: {count_i} mensajes")
+    
+    # Títulos de pestañas con contadores
+    t_g = f"💬 Chat Grupal ({count_g})" if count_g > 0 else "💬 Chat Grupal"
+    t_i = f"👤 Chat Individual ({count_i})" if count_i > 0 else "👤 Chat Individual"
+    
+    tabs_list = ["🔑 Cifrar", "🔓 Descifrar", t_g, t_i]
     if u == "MAQUINA ENIGMA": tabs_list.append("🧹 Gestión")
     tabs = st.tabs(tabs_list)
     
@@ -71,8 +87,7 @@ else:
             
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
-        db = cargar_db()
-        for m in [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]:
+        for m in mensajes_g:
             st.markdown(f"**{m['de']}** ({m['fecha']})")
             st.code(m['msg'])
         msg_g = st.text_area("Mensaje al grupo:", height=100)
@@ -83,7 +98,6 @@ else:
     with tabs[3]:
         st.subheader("👤 Chat Individual")
         dest = st.selectbox("Seleccionar persona:", [c for c in CUENTAS_PIN.keys() if c != u])
-        db = cargar_db()
         mensajes_priv = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
         for m in mensajes_priv:
             label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
@@ -97,10 +111,9 @@ else:
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
             st.subheader("🧹 Gestión y Auditoría")
-            db = cargar_db()
             tipo_gestion = st.radio("¿Qué deseas gestionar?", ["Chat Grupal", "Chat Individual"])
             if tipo_gestion == "Chat Grupal":
-                for m in [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]:
+                for m in mensajes_g:
                     c1, c2 = st.columns([0.8, 0.2])
                     with c1: st.code(f"{m['fecha']} | De:{m['de']} | {m['msg']}")
                     with c2:
