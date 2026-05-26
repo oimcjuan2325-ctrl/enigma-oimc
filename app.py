@@ -9,7 +9,7 @@ DB_FILE = "mensajes.json"
 
 JEROGLIFICOS = {
     "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
-    "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": '"亗"', "N": "⚡", "Ñ": "⛩", 
+    "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": "🜂", "N": "⚡", "Ñ": "⛩", 
     "O": "☉", "P": "⭧", "Q": "⿿", "R": "♾", "S": "🜔", "T": "⏃", "U": "⊔", 
     "V": "⪧", "W": "⎿", "X": "⧖", "Y": "↟", "Z": "⟐"
 }
@@ -58,24 +58,21 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    # Definición de pestañas: Admin y Gestión unificadas en "Gestión"
+    # Definición de pestañas
     lista_tabs = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
     if u == "MAQUINA ENIGMA":
         lista_tabs.append("🧹 Gestión y Auditoría")
     
     tabs = st.tabs(lista_tabs)
     
-    # 0. Cifrar
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
         if t: st.code(traducir(t, "cifrar"))
             
-    # 1. Descifrar
     with tabs[1]:
         t = st.text_area("Jeroglífico a descifrar:")
         if t: st.code(traducir(t, "descifrar"))
             
-    # 2. Chat Grupal
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
@@ -93,7 +90,6 @@ else:
                 guardar_db(db)
                 st.rerun()
 
-    # 3. Chat Individual
     with tabs[3]:
         st.subheader("👤 Chat Individual")
         dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
@@ -113,7 +109,6 @@ else:
                 guardar_db(db)
                 st.rerun()
             
-    # 4. Gestión y Auditoría (Solo Admin)
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
             st.subheader("🧹 Gestión y Auditoría de Inteligencia")
@@ -125,7 +120,7 @@ else:
                 mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
             elif tipo_filtro == "GESTIONAR CHAT GRUPAL":
                 mensajes_a_gestionar = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-            else: # CHAT INDIVIDUAL
+            else:
                 opciones_usuarios = [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"]
                 user_sel = st.selectbox("Elegir operador:", opciones_usuarios)
                 mensajes_a_gestionar = [m for m in db["mensajes"] if (m["de"] == user_sel or m["a"] == user_sel) and m["a"] != "CHAT GRUPAL"]
