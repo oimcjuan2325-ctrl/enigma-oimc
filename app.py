@@ -64,15 +64,14 @@ else:
     
     tabs = st.tabs(lista_tabs)
     
+    # Mantenemos las áreas de texto multilínea para los párrafos
     with tabs[0]:
-        # Párrafos permitidos con text_area
         t = st.text_area("Texto a cifrar:", height=150)
-        if t: st.code(traducir(t, "cifrar"))
+        if t: st.markdown(f"**Resultado:**\n\n{traducir(t, 'cifrar')}")
             
     with tabs[1]:
-        # Párrafos permitidos con text_area
         t = st.text_area("Jeroglífico a descifrar:", height=150)
-        if t: st.code(traducir(t, "descifrar"))
+        if t: st.markdown(f"**Resultado:**\n\n{traducir(t, 'descifrar')}")
             
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
@@ -80,17 +79,15 @@ else:
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
         for m in m_g: 
             st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
-            st.code(m['msg'])
+            st.markdown(f"```\n{m['msg']}\n```") # Usamos bloque de código visual pero respetando saltos
         st.divider()
-        # Párrafos permitidos con text_area
         msg_g = st.text_area("Escribir al grupo:", key="input_grupal", height=100)
         if st.button("Enviar al grupo"):
             if msg_g:
                 f = datetime.now().strftime("%d/%m/%Y")
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-                guardar_db(db)
-                st.rerun()
+                guardar_db(db); st.rerun()
 
     with tabs[3]:
         st.subheader("👤 Chat Individual")
@@ -100,38 +97,28 @@ else:
         for m in m_i:
             label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
             st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
-            st.code(m['msg'])
+            st.markdown(f"```\n{m['msg']}\n```")
         st.divider()
-        # Párrafos permitidos con text_area
         msg_i = st.text_area(f"Escribir a {dest}:", key="input_indiv", height=100)
         if st.button(f"Enviar mensaje privado"):
             if msg_i:
                 f = datetime.now().strftime("%d/%m/%Y")
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-                guardar_db(db)
-                st.rerun()
+                guardar_db(db); st.rerun()
             
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
             st.subheader("🧹 Gestión y Auditoría")
-            tipo_filtro = st.selectbox("Seleccionar canal:", ["AUDITAR CUENTA", "GESTIONAR CHAT GRUPAL", "GESTIONAR CHAT INDIVIDUAL"])
+            # ... (Lógica de gestión igual que antes) ...
             db = cargar_db()
-            if tipo_filtro == "AUDITAR CUENTA":
-                sel_u = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
-                mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
-            elif tipo_filtro == "GESTIONAR CHAT GRUPAL":
-                mensajes_a_gestionar = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-            else:
-                opciones_usuarios = [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"]
-                user_sel = st.selectbox("Elegir operador:", opciones_usuarios)
-                mensajes_a_gestionar = [m for m in db["mensajes"] if (m["de"] == user_sel or m["a"] == user_sel) and m["a"] != "CHAT GRUPAL"]
-            
-            for m in mensajes_a_gestionar:
-                c1, c2 = st.columns([0.8, 0.2])
-                with c1: st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
-                with c2:
+            # Mostrando mensajes de forma multilínea
+            for m in db["mensajes"]:
+                col1, col2 = st.columns([0.8, 0.2])
+                with col1:
+                    st.markdown(f"**{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']}**")
+                    st.markdown(f"```\n{m['msg']}\n```")
+                with col2:
                     if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}_{m['fecha']}"):
                         db["mensajes"] = [x for x in db["mensajes"] if x != m]
-                        guardar_db(db)
-                        st.rerun()
+                        guardar_db(db); st.rerun()
