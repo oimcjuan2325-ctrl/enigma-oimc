@@ -58,54 +58,53 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
+    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
+    # --- CHAT GRUPAL ---
+    with tabs[2]:
+        st.subheader("💬 Chat Grupal")
+        db = cargar_db()
+        m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+        for m in reversed(m_g): st.write(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+        
+        msg_g = st.text_input("Escribir al grupo:", key="input_grupal")
+        if st.button("Enviar al grupo"):
+            f = datetime.now().strftime("%d/%m/%Y")
+            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+            guardar_db(db)
+            st.rerun()
+
+    # --- CHAT INDIVIDUAL ---
+    with tabs[3]:
+        st.subheader("👤 Chat Individual")
+        dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
+        db = cargar_db()
+        m_i = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
+        for m in reversed(m_i):
+            label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
+            st.write(f"**{label}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+            
+        msg_i = st.text_input(f"Escribir a {dest}:", key="input_indiv")
+        if st.button(f"Enviar mensaje privado"):
+            f = datetime.now().strftime("%d/%m/%Y")
+            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+            db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+            guardar_db(db)
+            st.rerun()
+
+    # --- PESTAÑAS RESTANTES ---
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
         if t: st.code(traducir(t, "cifrar"))
     with tabs[1]:
         t = st.text_area("Jeroglífico a descifrar:")
         if t: st.code(traducir(t, "descifrar"))
-    with tabs[2]:
-        dest = st.selectbox("Destinatario:", ["CHAT GRUPAL"] + list(CUENTAS_PIN.keys()))
-        msg = st.text_input("Mensaje:")
-        if st.button("Transmitir"):
-            db = cargar_db()
-            f = datetime.now().strftime("%d/%m/%Y")
-            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-            db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-            guardar_db(db)
-            st.success(f"Transmitido (ID: {ids:03d})")
-            
-    with tabs[3]:
-        db = cargar_db()
-        m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-        if not m_g: st.info("Chat Grupal vacío.")
-        else:
-            for m in reversed(m_g): st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
-
-    with tabs[4]: # Chat Individual (Fusión de Enviados y Recibidos)
-        st.subheader("👤 Conversaciones Privadas")
-        db = cargar_db()
-        # Filtramos solo mensajes donde tú eres el remitente O el destinatario (excluyendo el Grupal)
-        m_i = [m for m in db["mensajes"] if (m['de'] == u or m['a'] == u) and m['a'] != "CHAT GRUPAL"]
-        if not m_i: st.info("No hay mensajes privados.")
-        else:
-            for m in reversed(m_i):
-                sentido = "📤 Enviado a" if m['de'] == u else "📥 Recibido de"
-                interlocutor = m['a'] if m['de'] == u else m['de']
-                st.write(f"**{sentido} {interlocutor}** ({m['fecha']} | ID:{m['id']})")
-                st.code(m['msg'])
             
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
             st.subheader("🛠️ Auditoría de Inteligencia")
             sel_u = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
             db = cargar_db()
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("#### 📤 Enviados")
-                for m in [m for m in db["mensajes"] if m["de"] == sel_u]: st.write(f"Para: {m['a']} | `{m['msg']}`")
-            with c2:
-                st.write("#### 📥 Recibidos")
-                for m in [m for m in db["mensajes"] if m["a"] == sel_u]: st.write(f"De: {m['de']} | `{m['msg']}`")
+            for m in [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]:
+                st.write(f"({m['fecha']}) De: {m['de']} | A: {m['a']} | `{m['msg']}`")
