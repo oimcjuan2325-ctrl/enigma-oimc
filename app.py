@@ -58,7 +58,7 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "💬 Chat Grupal", "📥 Recibidos"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
+    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "📤 Mis Enviados", "💬 Chat Grupal", "📥 Recibidos"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
@@ -75,14 +75,26 @@ else:
             ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
             db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
             guardar_db(db)
-            st.success(f"Mensaje enviado con ID: {ids:03d}")
-    with tabs[3]:
+            st.success(f"Transmitido (ID: {ids:03d})")
+            
+    with tabs[3]: # Sección NUEVA: Mis Enviados
+        st.subheader("📤 Registro de Salidas")
+        db = cargar_db()
+        m_e = [m for m in db["mensajes"] if m["de"] == u]
+        if not m_e: st.info("No has enviado ningún mensaje aún.")
+        else:
+            for m in reversed(m_e):
+                st.write(f"**Fecha:** {m['fecha']} | **ID:** `{m['id']}` | **Destinatario:** {m['a']}")
+                st.caption(f"Mensaje cifrado: `{m['msg']}`")
+                st.divider()
+
+    with tabs[4]:
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
         if not m_g: st.info("De momento no se ha escrito ningún mensaje.")
         else:
             for m in m_g: st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
-    with tabs[4]:
+    with tabs[5]:
         db = cargar_db()
         m_r = [m for m in db["mensajes"] if m["a"] == u]
         if not m_r: st.info("De momento no has recibido ningún mensaje.")
@@ -101,10 +113,3 @@ else:
             with c2:
                 st.write("#### 📥 Recibidos")
                 for m in [m for m in db["mensajes"] if m["a"] == sel_u]: st.write(f"De: {m['de']} | `{m['msg']}`")
-            st.markdown("---")
-            st.markdown("### 📜 Abecedario Universal")
-            letras = list(JEROGLIFICOS.keys())
-            t = "| C | Jeroglífico | | C | Jeroglífico |\n|:---:|:---:|:---:|:---:|:---:|\n"
-            for i in range(13):
-                t += f"| {letras[i]} | `{JEROGLIFICOS[letras[i]]}` | | {letras[i+13]} | `{JEROGLIFICOS[letras[i+13]]}` |\n"
-            st.markdown(t)
