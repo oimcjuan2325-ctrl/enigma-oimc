@@ -38,7 +38,7 @@ def traducir(texto, tipo="cifrar"):
     for l, s in JEROGLIFICOS.items(): res = res.replace(s, l)
     return res
 
-# --- LOGICA DE LOGIN ---
+# --- LÓGICA DE LOGIN ---
 if "usuario" not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
@@ -107,10 +107,15 @@ else:
                         if st.button("Borrar", key=f"g_{m['fecha']}_{m['de']}_{m['msg'][:5]}"):
                             db["mensajes"].remove(m); guardar_db(db); st.rerun()
             else:
-                persona_sel = st.selectbox("Elige cuenta para gestionar:", [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"])
-                for m in [m for m in db["mensajes"] if (m['de'] == persona_sel or m['a'] == persona_sel) and m['a'] != "CHAT GRUPAL"]:
-                    c1, c2 = st.columns([0.8, 0.2])
-                    with c1: st.code(f"{m['fecha']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
-                    with c2:
-                        if st.button("Borrar", key=f"p_{m['fecha']}_{m['de']}_{m['a']}_{m['msg'][:5]}"):
-                            db["mensajes"].remove(m); guardar_db(db); st.rerun()
+                persona_a = st.selectbox("1. Elige operador:", [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"])
+                mensajes_a = [m for m in db["mensajes"] if (m['de'] == persona_a or m['a'] == persona_a) and m['a'] != "CHAT GRUPAL"]
+                contactos = sorted(list(set([m['a'] if m['de'] == persona_a else m['de'] for m in mensajes_a])))
+                if contactos:
+                    persona_b = st.selectbox("2. Elige con quién chateó:", contactos)
+                    for m in [m for m in mensajes_a if m['de'] == persona_b or m['a'] == persona_b]:
+                        c1, c2 = st.columns([0.8, 0.2])
+                        with c1: st.code(f"{m['fecha']} | De:{m['de']} | {m['msg']}")
+                        with c2:
+                            if st.button("Borrar", key=f"p_{m['fecha']}_{m['de']}_{m['a']}_{m['msg'][:5]}"):
+                                db["mensajes"].remove(m); guardar_db(db); st.rerun()
+                else: st.info("Sin registros.")
