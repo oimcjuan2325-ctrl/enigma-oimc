@@ -60,23 +60,22 @@ else:
     
     tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
-    # 1. Cifrar
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
         if t: st.code(traducir(t, "cifrar"))
             
-    # 2. Descifrar
     with tabs[1]:
         t = st.text_area("Jeroglífico a descifrar:")
         if t: st.code(traducir(t, "descifrar"))
             
-    # 3. Chat Grupal
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-        for m in reversed(m_g): st.write(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+        # Mostramos mensajes cronológicamente (sin reversed)
+        for m in m_g: st.write(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
         
+        st.divider() # Separador visual para la barra de entrada
         msg_g = st.text_input("Escribir al grupo:", key="input_grupal")
         if st.button("Enviar al grupo"):
             if msg_g:
@@ -86,16 +85,17 @@ else:
                 guardar_db(db)
                 st.rerun()
 
-    # 4. Chat Individual
     with tabs[3]:
         st.subheader("👤 Chat Individual")
         dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
         db = cargar_db()
         m_i = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
-        for m in reversed(m_i):
+        # Mostramos mensajes cronológicamente
+        for m in m_i:
             label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
             st.write(f"**{label}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
             
+        st.divider() # Separador visual para la barra de entrada
         msg_i = st.text_input(f"Escribir a {dest}:", key="input_indiv")
         if st.button(f"Enviar mensaje privado"):
             if msg_i:
@@ -105,7 +105,6 @@ else:
                 guardar_db(db)
                 st.rerun()
             
-    # 5. Admin
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
             st.subheader("🛠️ Auditoría de Inteligencia")
