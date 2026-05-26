@@ -58,10 +58,10 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    # Definición de pestañas según usuario
+    # Definición de pestañas: Admin y Gestión unificadas en "Gestión"
     lista_tabs = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
     if u == "MAQUINA ENIGMA":
-        lista_tabs.extend(["🛠️ Admin", "🧹 Gestión"])
+        lista_tabs.append("🧹 Gestión y Auditoría")
     
     tabs = st.tabs(lista_tabs)
     
@@ -113,30 +113,26 @@ else:
                 guardar_db(db)
                 st.rerun()
             
-    # 4 & 5. Admin y Gestión (Solo Admin)
+    # 4. Gestión y Auditoría (Solo Admin)
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
-            st.subheader("🛠️ Auditoría de Inteligencia")
-            sel_u = st.selectbox("Auditar cuenta:", list(CUENTAS_PIN.keys()))
+            st.subheader("🧹 Gestión y Auditoría de Inteligencia")
+            tipo_filtro = st.selectbox("Seleccionar canal:", ["AUDITAR CUENTA", "GESTIONAR CHAT GRUPAL", "GESTIONAR CHAT INDIVIDUAL"])
             db = cargar_db()
-            for m in [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]:
-                st.markdown(f"({m['fecha']}) De: **{m['de']}** | A: **{m['a']}**")
-                st.code(m['msg'])
-        
-        with tabs[5]:
-            st.subheader("🧹 Gestión de Archivos (Eliminación)")
-            tipo_chat = st.selectbox("Tipo de chat a gestionar:", ["CHAT GRUPAL", "CHAT INDIVIDUAL"])
-            db = cargar_db()
-            if tipo_chat == "CHAT GRUPAL":
-                mensajes_filtrados = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-            else:
-                opciones_usuarios = [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"]
-                usuario_seleccionado = st.selectbox("Elegir cuenta para gestionar:", opciones_usuarios)
-                mensajes_filtrados = [m for m in db["mensajes"] if (m["de"] == usuario_seleccionado or m["a"] == usuario_seleccionado) and m["a"] != "CHAT GRUPAL"]
             
-            if not mensajes_filtrados: st.info("No hay mensajes encontrados.")
+            if tipo_filtro == "AUDITAR CUENTA":
+                sel_u = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
+                mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
+            elif tipo_filtro == "GESTIONAR CHAT GRUPAL":
+                mensajes_a_gestionar = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+            else: # CHAT INDIVIDUAL
+                opciones_usuarios = [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"]
+                user_sel = st.selectbox("Elegir operador:", opciones_usuarios)
+                mensajes_a_gestionar = [m for m in db["mensajes"] if (m["de"] == user_sel or m["a"] == user_sel) and m["a"] != "CHAT GRUPAL"]
+            
+            if not mensajes_a_gestionar: st.info("No hay mensajes encontrados.")
             else:
-                for m in mensajes_filtrados:
+                for m in mensajes_a_gestionar:
                     c1, c2 = st.columns([0.8, 0.2])
                     with c1: st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
                     with c2:
