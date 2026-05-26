@@ -58,7 +58,6 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    # Definición de pestañas
     lista_tabs = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
     if u == "MAQUINA ENIGMA":
         lista_tabs.append("🧹 Gestión y Auditoría")
@@ -81,7 +80,8 @@ else:
             st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
             st.code(m['msg'])
         st.divider()
-        msg_g = st.text_input("Escribir al grupo:", key="input_grupal")
+        # Area de texto: altura 150px, máximo 500 caracteres
+        msg_g = st.text_area("Escribir mensaje (Párrafos permitidos):", key="input_grupal", height=150, max_chars=500)
         if st.button("Enviar al grupo"):
             if msg_g:
                 f = datetime.now().strftime("%d/%m/%Y")
@@ -100,7 +100,8 @@ else:
             st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
             st.code(m['msg'])
         st.divider()
-        msg_i = st.text_input(f"Escribir a {dest}:", key="input_indiv")
+        # Area de texto: altura 150px, máximo 500 caracteres
+        msg_i = st.text_area(f"Escribir a {dest}:", key="input_indiv", height=150, max_chars=500)
         if st.button(f"Enviar mensaje privado"):
             if msg_i:
                 f = datetime.now().strftime("%d/%m/%Y")
@@ -111,10 +112,9 @@ else:
             
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
-            st.subheader("🧹 Gestión y Auditoría de Inteligencia")
+            st.subheader("🧹 Gestión y Auditoría")
             tipo_filtro = st.selectbox("Seleccionar canal:", ["AUDITAR CUENTA", "GESTIONAR CHAT GRUPAL", "GESTIONAR CHAT INDIVIDUAL"])
             db = cargar_db()
-            
             if tipo_filtro == "AUDITAR CUENTA":
                 sel_u = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
                 mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
