@@ -7,15 +7,6 @@ from datetime import datetime
 st.set_page_config(page_title="Máquina Enigma O.I.M.C.", layout="wide")
 DB_FILE = "mensajes.json"
 
-# --- JS PARA BOTÓN COPIAR ---
-st.markdown("""
-<script>
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text);
-}
-</script>
-""", unsafe_allow_html=True)
-
 JEROGLIFICOS = {
     "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
     "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": "🜂", "N": "⚡", "Ñ": "⛩", 
@@ -62,41 +53,85 @@ if st.session_state.usuario is None:
             else: st.error("Acceso denegado")
 else:
     u = st.session_state.usuario
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🧹 Gestión"] if u == "MAQUINA ENIGMA" else []))
+    st.sidebar.header(f"Operador: {u}")
+    if st.sidebar.button("🔒 Cerrar Sesión"):
+        st.session_state.usuario = None
+        st.rerun()
+    
+    lista_tabs = ["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"]
+    if u == "MAQUINA ENIGMA":
+        lista_tabs.append("🧹 Gestión y Auditoría")
+    
+    tabs = st.tabs(lista_tabs)
     
     with tabs[0]:
-        t = st.text_area("Texto a cifrar:", height=150, max_chars=500)
-        if t:
-            cifrado = traducir(t, "cifrar")
-            st.code(cifrado)
-            if st.button("📋 Copiar Cifrado"):
-                st.write(f'<script>copyToClipboard("{cifrado}");</script>', unsafe_allow_html=True)
-                st.success("¡Cifrado copiado al portapapeles!")
-
+        # Párrafos permitidos con text_area
+        t = st.text_area("Texto a cifrar:", height=150)
+        if t: st.code(traducir(t, "cifrar"))
+            
     with tabs[1]:
-        t = st.text_area("Pega aquí el jeroglífico:", height=150, max_chars=500)
-        if t: st.write(traducir(t, "descifrar"))
-
-    # Para los chats, ahora el botón de copiar aparecerá junto al mensaje
-    def mostrar_mensajes(mensajes):
-        for m in mensajes:
-            col1, col2 = st.columns([0.9, 0.1])
-            with col1:
-                st.markdown(f"**{m['de']}** ({m['fecha']}):")
-                st.markdown(f"> {m['msg']}")
-            with col2:
-                if st.button("📋", key=f"btn_{m['id']}_{m['fecha']}"):
-                    st.write(f'<script>copyToClipboard("{m["msg"]}");</script>', unsafe_allow_html=True)
-                    st.toast("Copiado!")
-
+        # Párrafos permitidos con text_area
+        t = st.text_area("Jeroglífico a descifrar:", height=150)
+        if t: st.code(traducir(t, "descifrar"))
+            
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
-        mostrar_mensajes([m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"])
-        
-        msg_g = st.text_area("Escribir mensaje:", key="input_grupal", height=100)
+        m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+        for m in m_g: 
+            st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}):")
+            st.code(m['msg'])
+        st.divider()
+        # Párrafos permitidos con text_area
+        msg_g = st.text_area("Escribir al grupo:", key="input_grupal", height=100)
         if st.button("Enviar al grupo"):
-            f = datetime.now().strftime("%d/%m/%Y")
-            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-            guardar_db(db); st.rerun()
+            if msg_g:
+                f = datetime.now().strftime("%d/%m/%Y")
+                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+                db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+                guardar_db(db)
+                st.rerun()
+
+    with tabs[3]:
+        st.subheader("👤 Chat Individual")
+        dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
+        db = cargar_db()
+        m_i = [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]
+        for m in m_i:
+            label = "📤 Tú" if m['de'] == u else f"📥 {m['de']}"
+            st.markdown(f"**{label}** ({m['fecha']} | ID:{m['id']}):")
+            st.code(m['msg'])
+        st.divider()
+        # Párrafos permitidos con text_area
+        msg_i = st.text_area(f"Escribir a {dest}:", key="input_indiv", height=100)
+        if st.button(f"Enviar mensaje privado"):
+            if msg_i:
+                f = datetime.now().strftime("%d/%m/%Y")
+                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+                db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+                guardar_db(db)
+                st.rerun()
+            
+    if u == "MAQUINA ENIGMA":
+        with tabs[4]:
+            st.subheader("🧹 Gestión y Auditoría")
+            tipo_filtro = st.selectbox("Seleccionar canal:", ["AUDITAR CUENTA", "GESTIONAR CHAT GRUPAL", "GESTIONAR CHAT INDIVIDUAL"])
+            db = cargar_db()
+            if tipo_filtro == "AUDITAR CUENTA":
+                sel_u = st.selectbox("Elegir operador:", list(CUENTAS_PIN.keys()))
+                mensajes_a_gestionar = [m for m in db["mensajes"] if m["de"] == sel_u or m["a"] == sel_u]
+            elif tipo_filtro == "GESTIONAR CHAT GRUPAL":
+                mensajes_a_gestionar = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
+            else:
+                opciones_usuarios = [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"]
+                user_sel = st.selectbox("Elegir operador:", opciones_usuarios)
+                mensajes_a_gestionar = [m for m in db["mensajes"] if (m["de"] == user_sel or m["a"] == user_sel) and m["a"] != "CHAT GRUPAL"]
+            
+            for m in mensajes_a_gestionar:
+                c1, c2 = st.columns([0.8, 0.2])
+                with c1: st.code(f"{m['fecha']} | ID:{m['id']} | De:{m['de']} | A:{m['a']} | Msg:{m['msg']}")
+                with c2:
+                    if st.button(f"Borrar {m['id']}", key=f"del_{m['id']}_{m['de']}_{m['fecha']}"):
+                        db["mensajes"] = [x for x in db["mensajes"] if x != m]
+                        guardar_db(db)
+                        st.rerun()
