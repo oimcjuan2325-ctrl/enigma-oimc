@@ -8,7 +8,7 @@ st.set_page_config(page_title="Máquina Enigma O.I.M.C.", layout="wide")
 DB_FILE = "mensajes.json"
 
 JEROGLIFICOS = {
-    "A": "⭡", "B": "𝌇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
+    "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
     "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": '"亗"', "N": "⚡", "Ñ": "⛩", 
     "O": "☉", "P": "⭧", "Q": "⿿", "R": "♾", "S": "🜔", "T": "⏃", "U": "⊔", 
     "V": "⪧", "W": "⎿", "X": "⧖", "Y": "↟", "Z": "⟐"
@@ -58,7 +58,7 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "💬 Chat Grupal", "📥 Recibidos", "🖨️ Imprimir"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
+    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "💬 Chat Grupal", "📥 Recibidos"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
@@ -88,16 +88,6 @@ else:
         if not m_r: st.info("De momento no has recibido ningún mensaje.")
         else:
             for m in m_r: st.markdown(f"**De {m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
-    with tabs[5]:
-        st.write("### 🖨️ Estación de Impresión O.I.M.C.")
-        t_imp = st.text_area("Introduce tu texto aquí:")
-        op = st.radio("Acción:", ["1. Dejar tal cual", "2. Cifrar texto", "3. Descifrar texto"])
-        if st.button("Preparar documento"):
-            if "2" in op: final = traducir(t_imp, "cifrar")
-            elif "3" in op: final = traducir(t_imp, "descifrar")
-            else: final = t_imp
-            st.code(final)
-            st.warning("⚠️ AHORA PARA IMPRIMIR TU MENSAJE TIENES QUE PULSAR CONTROL + P EN TU TECLADO.")
             
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
