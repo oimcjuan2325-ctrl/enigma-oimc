@@ -84,7 +84,7 @@ else:
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
                 guardar_db(db)
-                st.rerun()
+                st.rerun() # Esto borra el input al recargar
 
     with tabs[3]:
         st.subheader("👤 Chat Individual")
@@ -104,7 +104,7 @@ else:
                 ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
                 db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
                 guardar_db(db)
-                st.rerun()
+                st.rerun() # Esto borra el input al recargar
             
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
