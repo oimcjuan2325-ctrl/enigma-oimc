@@ -60,7 +60,17 @@ else:
     
     tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
-    # --- CHAT GRUPAL ---
+    # 1. Cifrar
+    with tabs[0]:
+        t = st.text_area("Texto a cifrar:")
+        if t: st.code(traducir(t, "cifrar"))
+            
+    # 2. Descifrar
+    with tabs[1]:
+        t = st.text_area("Jeroglífico a descifrar:")
+        if t: st.code(traducir(t, "descifrar"))
+            
+    # 3. Chat Grupal
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         db = cargar_db()
@@ -69,13 +79,14 @@ else:
         
         msg_g = st.text_input("Escribir al grupo:", key="input_grupal")
         if st.button("Enviar al grupo"):
-            f = datetime.now().strftime("%d/%m/%Y")
-            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-            guardar_db(db)
-            st.rerun()
+            if msg_g:
+                f = datetime.now().strftime("%d/%m/%Y")
+                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+                db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+                guardar_db(db)
+                st.rerun()
 
-    # --- CHAT INDIVIDUAL ---
+    # 4. Chat Individual
     with tabs[3]:
         st.subheader("👤 Chat Individual")
         dest = st.selectbox("Seleccionar operador:", [c for c in CUENTAS_PIN.keys() if c != u])
@@ -87,20 +98,14 @@ else:
             
         msg_i = st.text_input(f"Escribir a {dest}:", key="input_indiv")
         if st.button(f"Enviar mensaje privado"):
-            f = datetime.now().strftime("%d/%m/%Y")
-            ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
-            db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
-            guardar_db(db)
-            st.rerun()
-
-    # --- PESTAÑAS RESTANTES ---
-    with tabs[0]:
-        t = st.text_area("Texto a cifrar:")
-        if t: st.code(traducir(t, "cifrar"))
-    with tabs[1]:
-        t = st.text_area("Jeroglífico a descifrar:")
-        if t: st.code(traducir(t, "descifrar"))
+            if msg_i:
+                f = datetime.now().strftime("%d/%m/%Y")
+                ids = len([m for m in db["mensajes"] if m["fecha"] == f]) + 1
+                db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": f, "id": f"{ids:03d}"})
+                guardar_db(db)
+                st.rerun()
             
+    # 5. Admin
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
             st.subheader("🛠️ Auditoría de Inteligencia")
