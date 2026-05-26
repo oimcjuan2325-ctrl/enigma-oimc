@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import time
 from datetime import datetime
 
 # --- CONFIGURACIÓN ---
@@ -24,8 +25,7 @@ def cargar_db():
     if not os.path.exists(DB_FILE): return {"mensajes": []}
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if "mensajes" in data else {"mensajes": []}
+            return json.load(f)
     except: return {"mensajes": []}
 
 def guardar_db(db):
@@ -71,11 +71,11 @@ else:
     with tabs[2]:
         st.subheader("💬 Chat Grupal")
         for m in [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]:
-            st.markdown(f"**{m['de']}** ({m['fecha']})")
+            st.caption(f"{m['de']} ({m['fecha']})")
             st.code(m['msg'])
         msg_g = st.text_area("Mensaje al grupo:", height=100)
         if st.button("Enviar al grupo"):
-            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": datetime.now().strftime("%d/%m/%Y"), "leido": False})
+            db["mensajes"].append({"de": u, "a": "CHAT GRUPAL", "msg": traducir(msg_g, "cifrar"), "fecha": datetime.now().strftime("%H:%M"), "leido": False})
             guardar_db(db); st.rerun()
 
     with tabs[3]:
@@ -85,18 +85,26 @@ else:
             st.warning(f"⚠️ {persona} te ha enviado un mensaje.")
         
         dest = st.selectbox("Seleccionar persona:", [c for c in CUENTAS_PIN.keys() if c != u])
+        
+        # Marcado de leído
         for m in db["mensajes"]:
             if m["a"] == u and m["de"] == dest: m["leido"] = True
         guardar_db(db)
         
-        for m in [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]:
-            st.caption(f"{'📤 Tú' if m['de'] == u else f'📥 {m['de']}'} ({m['fecha']})")
-            st.code(m['msg'])
+        # Contenedor dinámico de chat
+        chat_placeholder = st.empty()
+        with chat_placeholder.container():
+            for m in [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]:
+                st.caption(f"{'📤 Tú' if m['de'] == u else f'📥 {m['de']}'} ({m['fecha']})")
+                st.code(m['msg'])
         
         msg_i = st.text_area(f"Escribir a {dest}:", height=100)
         if st.button("Enviar mensaje privado"):
-            db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": datetime.now().strftime("%d/%m/%Y"), "leido": False})
+            db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": datetime.now().strftime("%H:%M"), "leido": False})
             guardar_db(db); st.rerun()
+            
+        time.sleep(2) # Pausa para refresco suave
+        st.rerun()
 
     if u == "MAQUINA ENIGMA":
         with tabs[4]:
@@ -104,8 +112,7 @@ else:
             tipo = st.radio("¿Qué auditar?", ["Chat Grupal", "Chat Individual"])
             if not db["mensajes"]: st.info("Base de datos vacía.")
             elif tipo == "Chat Grupal":
-                mensajes_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-                for i, m in enumerate(mensajes_g):
+                for i, m in enumerate([m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]):
                     c1, c2 = st.columns([0.8, 0.2])
                     with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
                     with c2:
@@ -117,11 +124,10 @@ else:
                 contactos = sorted(list(set([m['a'] if m['de'] == p_a else m['de'] for m in mensajes_a])))
                 if contactos:
                     p_b = st.selectbox("2. Elige con quién chateó:", contactos)
-                    mensajes_filtrados = [m for m in mensajes_a if m['de'] == p_b or m['a'] == p_b]
-                    for i, m in enumerate(mensajes_filtrados):
+                    filtrados = [m for m in mensajes_a if m['de'] == p_b or m['a'] == p_b]
+                    for i, m in enumerate(filtrados):
                         c1, c2 = st.columns([0.8, 0.2])
                         with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
                         with c2:
                             if st.button("Borrar", key=f"p_{i}_{m['fecha']}_{m['de']}"):
                                 db["mensajes"].remove(m); guardar_db(db); st.rerun()
-                else: st.info("Sin registros.")
