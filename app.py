@@ -58,7 +58,7 @@ else:
         st.session_state.usuario = None
         st.rerun()
     
-    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "📤 Mis Enviados", "💬 Chat Grupal", "📥 Recibidos"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
+    tabs = st.tabs(["🔑 Cifrar", "🔓 Descifrar", "🚀 Enviar", "💬 Chat Grupal", "👤 Chat Individual"] + (["🛠️ Admin"] if u == "MAQUINA ENIGMA" else []))
     
     with tabs[0]:
         t = st.text_area("Texto a cifrar:")
@@ -77,29 +77,25 @@ else:
             guardar_db(db)
             st.success(f"Transmitido (ID: {ids:03d})")
             
-    with tabs[3]: # Sección NUEVA: Mis Enviados
-        st.subheader("📤 Registro de Salidas")
-        db = cargar_db()
-        m_e = [m for m in db["mensajes"] if m["de"] == u]
-        if not m_e: st.info("No has enviado ningún mensaje aún.")
-        else:
-            for m in reversed(m_e):
-                st.write(f"**Fecha:** {m['fecha']} | **ID:** `{m['id']}` | **Destinatario:** {m['a']}")
-                st.caption(f"Mensaje cifrado: `{m['msg']}`")
-                st.divider()
-
-    with tabs[4]:
+    with tabs[3]:
         db = cargar_db()
         m_g = [m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]
-        if not m_g: st.info("De momento no se ha escrito ningún mensaje.")
+        if not m_g: st.info("Chat Grupal vacío.")
         else:
-            for m in m_g: st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
-    with tabs[5]:
+            for m in reversed(m_g): st.markdown(f"**{m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+
+    with tabs[4]: # Chat Individual (Fusión de Enviados y Recibidos)
+        st.subheader("👤 Conversaciones Privadas")
         db = cargar_db()
-        m_r = [m for m in db["mensajes"] if m["a"] == u]
-        if not m_r: st.info("De momento no has recibido ningún mensaje.")
+        # Filtramos solo mensajes donde tú eres el remitente O el destinatario (excluyendo el Grupal)
+        m_i = [m for m in db["mensajes"] if (m['de'] == u or m['a'] == u) and m['a'] != "CHAT GRUPAL"]
+        if not m_i: st.info("No hay mensajes privados.")
         else:
-            for m in m_r: st.markdown(f"**De {m['de']}** ({m['fecha']} | ID:{m['id']}): `{m['msg']}`")
+            for m in reversed(m_i):
+                sentido = "📤 Enviado a" if m['de'] == u else "📥 Recibido de"
+                interlocutor = m['a'] if m['de'] == u else m['de']
+                st.write(f"**{sentido} {interlocutor}** ({m['fecha']} | ID:{m['id']})")
+                st.code(m['msg'])
             
     if u == "MAQUINA ENIGMA":
         with tabs[-1]:
