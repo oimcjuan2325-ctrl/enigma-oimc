@@ -8,19 +8,7 @@ from datetime import datetime
 st.set_page_config(page_title="Central Enigma O.I.M.C.", layout="wide")
 DB_FILE = "mensajes.json"
 
-JEROGLIFICOS = {
-    "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
-    "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": "🜂", "N": "⚡", "Ñ": "⛩", 
-    "O": "☉", "P": "⭧", "Q": "⿿", "R": "♾", "S": "🜔", "T": "⏃", "U": "⊔", 
-    "V": "⪧", "W": "⎿", "X": "⧖", "Y": "↟", "Z": "⟐"
-}
-
-CUENTAS_PIN = {
-    "MAQUINA ENIGMA": "2325", "Juan": "2313", "Asier": "2021", "Jesús": "1365", 
-    "Yolanda": "1460", "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", 
-    "Erika": "7562", "Nahia": "9786", "Amets": "1053"
-}
-
+# --- FUNCIONES CORE ---
 def cargar_db():
     if not os.path.exists(DB_FILE): return {"mensajes": []}
     try:
@@ -36,6 +24,20 @@ def traducir(texto, tipo="cifrar"):
     res = texto.upper()
     for l, s in JEROGLIFICOS.items(): res = res.replace(s, l)
     return res
+
+# --- DATOS ---
+JEROGLIFICOS = {
+    "A": "⭡", "B": "🜇", "C": "亗", "D": "⨂", "E": "⩦", "F": "⎔", "G": "▣", "H": "⫿", 
+    "I": "⁜", "J": "⧉", "K": "⋔", "L": "◬", "M": "🜂", "N": "⚡", "Ñ": "⛩", 
+    "O": "☉", "P": "⭧", "Q": "⿿", "R": "♾", "S": "🜔", "T": "⏃", "U": "⊔", 
+    "V": "⪧", "W": "⎿", "X": "⧖", "Y": "↟", "Z": "⟐"
+}
+
+CUENTAS_PIN = {
+    "MAQUINA ENIGMA": "2325", "Juan": "2313", "Asier": "2021", "Jesús": "1365", 
+    "Yolanda": "1460", "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", 
+    "Erika": "7562", "Nahia": "9786", "Amets": "1053"
+}
 
 if "usuario" not in st.session_state: st.session_state.usuario = None
 
@@ -80,54 +82,24 @@ else:
 
     with tabs[3]:
         st.subheader("👤 Chat Individual")
+        # Notificaciones
         mensajes_nuevos = [m for m in db["mensajes"] if m["a"] == u and not m.get("leido", False)]
         for persona in set([m["de"] for m in mensajes_nuevos]):
             st.warning(f"⚠️ {persona} te ha enviado un mensaje.")
         
         dest = st.selectbox("Seleccionar persona:", [c for c in CUENTAS_PIN.keys() if c != u])
         
-        # Marcado de leído
+        # Marcado de leído sin forzar refresco total
         for m in db["mensajes"]:
             if m["a"] == u and m["de"] == dest: m["leido"] = True
         guardar_db(db)
         
-        # Contenedor dinámico de chat
-        chat_placeholder = st.empty()
-        with chat_placeholder.container():
-            for m in [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]:
-                st.caption(f"{'📤 Tú' if m['de'] == u else f'📥 {m['de']}'} ({m['fecha']})")
-                st.code(m['msg'])
+        # Muestra mensajes sin st.rerun() constante
+        for m in [m for m in db["mensajes"] if (m['de'] == u and m['a'] == dest) or (m['de'] == dest and m['a'] == u)]:
+            st.caption(f"{'📤 Tú' if m['de'] == u else f'📥 {m['de']}'} ({m['fecha']})")
+            st.code(m['msg'])
         
         msg_i = st.text_area(f"Escribir a {dest}:", height=100)
         if st.button("Enviar mensaje privado"):
             db["mensajes"].append({"de": u, "a": dest, "msg": traducir(msg_i, "cifrar"), "fecha": datetime.now().strftime("%H:%M"), "leido": False})
             guardar_db(db); st.rerun()
-            
-        time.sleep(2) # Pausa para refresco suave
-        st.rerun()
-
-    if u == "MAQUINA ENIGMA":
-        with tabs[4]:
-            st.subheader("🧹 Gestión y Auditoría")
-            tipo = st.radio("¿Qué auditar?", ["Chat Grupal", "Chat Individual"])
-            if not db["mensajes"]: st.info("Base de datos vacía.")
-            elif tipo == "Chat Grupal":
-                for i, m in enumerate([m for m in db["mensajes"] if m["a"] == "CHAT GRUPAL"]):
-                    c1, c2 = st.columns([0.8, 0.2])
-                    with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
-                    with c2:
-                        if st.button("Borrar", key=f"g_{i}_{m['fecha']}"):
-                            db["mensajes"].remove(m); guardar_db(db); st.rerun()
-            else:
-                p_a = st.selectbox("1. Elige operador:", [c for c in CUENTAS_PIN.keys() if c != "MAQUINA ENIGMA"])
-                mensajes_a = [m for m in db["mensajes"] if (m['de'] == p_a or m['a'] == p_a) and m['a'] != "CHAT GRUPAL"]
-                contactos = sorted(list(set([m['a'] if m['de'] == p_a else m['de'] for m in mensajes_a])))
-                if contactos:
-                    p_b = st.selectbox("2. Elige con quién chateó:", contactos)
-                    filtrados = [m for m in mensajes_a if m['de'] == p_b or m['a'] == p_b]
-                    for i, m in enumerate(filtrados):
-                        c1, c2 = st.columns([0.8, 0.2])
-                        with c1: st.code(f"{m['fecha']} | {m['de']}: {m['msg']}")
-                        with c2:
-                            if st.button("Borrar", key=f"p_{i}_{m['fecha']}_{m['de']}"):
-                                db["mensajes"].remove(m); guardar_db(db); st.rerun()
