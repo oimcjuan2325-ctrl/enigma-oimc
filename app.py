@@ -11,9 +11,10 @@ USUARIOS = {
 }
 
 # --- LÓGICA DEL MOTOR ENIGMA ---
-def obtener_desfase_diario():
-    hoy = datetime.date.today()
-    return ((hoy.day * hoy.month) + (hoy.isocalendar()[1] * hoy.isoweekday()) + (hoy.year % 100)) % 27
+def calcular_desfase(fecha):
+    semana = fecha.isocalendar()[1]
+    dia_semana = fecha.isoweekday()
+    return ((fecha.day * fecha.month) + (semana * dia_semana) + (fecha.year % 100)) % 27
 
 def motor_enigma(texto, desfase, modo='cifrar'):
     n = 27
@@ -50,11 +51,10 @@ else:
     usuario = st.session_state.usuario_logueado
     st.sidebar.title(f"OPERATIVO: {usuario}")
     
-    # Privilegios Admin solo para MÁQUINA ENIGMA
     if usuario == "MÁQUINA ENIGMA":
         st.sidebar.divider()
         st.sidebar.subheader("⚙️ MODO ADMINISTRADOR")
-        st.sidebar.info(f"Rotor activo: {obtener_desfase_diario()}")
+        st.sidebar.info(f"Rotor activo hoy: {calcular_desfase(datetime.date.today())}")
     
     if st.sidebar.button("CERRAR SESIÓN"):
         st.session_state.usuario_logueado = None
@@ -62,24 +62,32 @@ else:
 
     st.title("CENTRO DE MANDO CODEX DELTA")
     
-    # 1. CIFRADO
+    # SECCIÓN 1: CIFRADO
     st.header("1. Sección de Cifrado")
     msg_input = st.text_input("Mensaje a enviar:")
     if st.button("CIFRAR Y ENVIAR"):
-        cifrado = motor_enigma(msg_input, obtener_desfase_diario(), 'cifrar')
-        st.session_state.historial.append(f"{usuario}: {cifrado}")
+        desfase_hoy = calcular_desfase(datetime.date.today())
+        cifrado = motor_enigma(msg_input, desfase_hoy, 'cifrar')
+        st.session_state.historial.append(f"{usuario} [{datetime.date.today()}]: {cifrado}")
         st.code(f"PAQUETE: {cifrado}")
 
-    # 2. DESCIFRADO
+    # SECCIÓN 2: DESCIFRADO
     st.header("2. Módulo de Descifrado Táctico")
-    desfase_input = st.number_input("Ajustar desfase:", min_value=0, max_value=26, value=obtener_desfase_diario())
-    cifrado_in = st.text_input("Pegar código recibido:")
-    if st.button("EJECUTAR DESCIFRADO"):
-        res = motor_enigma(cifrado_in, desfase_input, 'descifrar')
-        st.success(f"MENSAJE: {res}")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        fecha_input = st.date_input("Fecha de envío del mensaje:", datetime.date.today())
+        desfase_calculado = calcular_desfase(fecha_input)
+        st.write(f"Desfase calculado: **{desfase_calculado}**")
+    with col2:
+        cifrado_in = st.text_input("Pegar código recibido:")
+    
+    if st.button("EJECUTAR DESCIFRADO", use_container_width=True):
+        if cifrado_in:
+            res = motor_enigma(cifrado_in, desfase_calculado, 'descifrar')
+            st.success(f"MENSAJE RECUPERADO:\n**{res}**")
 
-    # 3. HISTORIAL
+    # SECCIÓN 3: BANDEJA DE ENTRADA
     st.write("---")
-    st.subheader("Bandeja de Entrada")
+    st.subheader("Bandeja de Entrada (Últimos mensajes)")
     for m in st.session_state.historial[-5:]:
         st.text(m)
