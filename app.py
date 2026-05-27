@@ -10,16 +10,16 @@ USUARIOS = {
     "1053": "Amets", "2325": "MÁQUINA ENIGMA"
 }
 
-# --- LÓGICA DEL MOTOR ---
+# --- LÓGICA DEL MOTOR ENIGMA (NUEVA FÓRMULA DE ALTA SEGURIDAD) ---
 def calcular_desfase(fecha):
-    semana = fecha.isocalendar()[1]
-    dia_semana = fecha.isoweekday()
-    return ((fecha.day * fecha.month) + (semana * dia_semana) + (fecha.year % 100)) % 27
+    # Fórmula de alta volatilidad: los resultados varían drásticamente día a día
+    factor = (fecha.year * 13) + (fecha.month * 31) + (fecha.day ** 2) + (fecha.isocalendar()[1] * 7)
+    return factor % 27
 
 def motor_enigma(texto, desfase, modo='cifrar'):
     n = 27
     desp = desfase if modo == 'cifrar' else -desfase
-    if modo == 'cifrar': texto = texto[::-1]
+    if modo == 'cifrar': texto = texto[::-1] # Capa Anti-IA
     
     resultado = ""
     for char in texto.upper():
@@ -28,12 +28,13 @@ def motor_enigma(texto, desfase, modo='cifrar'):
             resultado += ABECEDARIO[idx]
         else: resultado += char
     
-    if modo == 'descifrar': resultado = resultado[::-1]
+    if modo == 'descifrar': resultado = resultado[::-1] # Inversión final
     return resultado
 
-# --- SESIÓN ---
+# --- ESTADO DE SESIÓN ---
 if 'usuario_logueado' not in st.session_state: st.session_state.usuario_logueado = None
 
+# --- INTERFAZ ---
 st.set_page_config(page_title="CODEX DELTA", page_icon="🔐", layout="centered")
 
 if st.session_state.usuario_logueado is None:
@@ -47,7 +48,7 @@ if st.session_state.usuario_logueado is None:
             st.error("PIN INVÁLIDO")
 else:
     usuario = st.session_state.usuario_logueado
-    st.sidebar.write(f"**Usuario:** {usuario}")
+    st.sidebar.write(f"**Operativo:** {usuario}")
     if st.sidebar.button("CERRAR SESIÓN"):
         st.session_state.usuario_logueado = None
         st.rerun()
