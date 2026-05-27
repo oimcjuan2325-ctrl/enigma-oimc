@@ -28,12 +28,11 @@ def motor_enigma(texto, desfase, modo='cifrar'):
             resultado += ABECEDARIO[idx]
         else: resultado += char
     
-    if modo == 'descifrar': resultado = resultado[::-1] # Inversión final
+    if modo == 'descifrar': resultado = resultado[::-1]
     return resultado
 
 # --- ESTADO DE SESIÓN ---
 if 'usuario_logueado' not in st.session_state: st.session_state.usuario_logueado = None
-if 'historial' not in st.session_state: st.session_state.historial = []
 
 # --- INTERFAZ ---
 st.set_page_config(page_title="CODEX DELTA", page_icon="🔐", layout="wide")
@@ -56,6 +55,7 @@ else:
         st.sidebar.subheader("⚙️ MODO ADMINISTRADOR")
         st.sidebar.info(f"Rotor activo hoy: {calcular_desfase(datetime.date.today())}")
     
+    st.sidebar.divider()
     if st.sidebar.button("CERRAR SESIÓN"):
         st.session_state.usuario_logueado = None
         st.rerun()
@@ -64,14 +64,23 @@ else:
     
     # SECCIÓN 1: CIFRADO
     st.header("1. Sección de Cifrado")
-    msg_input = st.text_input("Mensaje a enviar:")
-    if st.button("CIFRAR Y ENVIAR"):
-        desfase_hoy = calcular_desfase(datetime.date.today())
-        cifrado = motor_enigma(msg_input, desfase_hoy, 'cifrar')
-        st.session_state.historial.append(f"{usuario} [{datetime.date.today()}]: {cifrado}")
-        st.code(f"PAQUETE: {cifrado}")
+    col_dest, col_msg = st.columns([1, 2])
+    with col_dest:
+        destinatario = st.selectbox("DESTINATARIO:", 
+                                    ["OIMC_GRUPO", "JUAN", "ASIER", "JESÚS", "YOLANDA", "MIKEL", "GAIZKA", "IÑAKI", "ERIKA", "NAHIA", "AMETS"])
+    with col_msg:
+        msg_input = st.text_input("Mensaje a enviar:")
+    
+    if st.button("CIFRAR", use_container_width=True):
+        if msg_input:
+            desfase_hoy = calcular_desfase(datetime.date.today())
+            cifrado = motor_enigma(msg_input, desfase_hoy, 'cifrar')
+            paquete = f"DE:{usuario} | PARA:{destinatario} | MSG:{cifrado}"
+            st.code(paquete)
+            st.success(f"Mensaje cifrado y listo para transmitir a {destinatario}.")
 
     # SECCIÓN 2: DESCIFRADO
+    st.write("---")
     st.header("2. Módulo de Descifrado Táctico")
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -83,11 +92,7 @@ else:
     
     if st.button("EJECUTAR DESCIFRADO", use_container_width=True):
         if cifrado_in:
-            res = motor_enigma(cifrado_in, desfase_calculado, 'descifrar')
+            # Limpiamos el paquete si viene con formato DE:X|PARA:Y|MSG:Z
+            texto_limpio = cifrado_in.split("MSG:")[-1] if "MSG:" in cifrado_in else cifrado_in
+            res = motor_enigma(texto_limpio.strip(), desfase_calculado, 'descifrar')
             st.success(f"MENSAJE RECUPERADO:\n**{res}**")
-
-    # SECCIÓN 3: BANDEJA DE ENTRADA
-    st.write("---")
-    st.subheader("Bandeja de Entrada (Últimos mensajes)")
-    for m in st.session_state.historial[-5:]:
-        st.text(m)
