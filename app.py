@@ -12,14 +12,13 @@ USUARIOS = {
 
 # --- LÓGICA DEL MOTOR ENIGMA ---
 def calcular_desfase(fecha):
-    # Fórmula de alta volatilidad para máxima seguridad
     factor = (fecha.year * 13) + (fecha.month * 31) + (fecha.day ** 2) + (fecha.isocalendar()[1] * 7)
     return factor % 27
 
 def motor_enigma(texto, desfase, modo='cifrar'):
     n = 27
     desp = desfase if modo == 'cifrar' else -desfase
-    if modo == 'cifrar': texto = texto[::-1] # Capa Anti-IA
+    if modo == 'cifrar': texto = texto[::-1]
     
     resultado = ""
     for char in texto.upper():
@@ -91,16 +90,20 @@ else:
         mensajes = st.session_state.archivo_mensajes.get(str(fecha_query), [])
         for m in mensajes: st.code(m)
 
-    # 4. MÓDULO DE INTERCEPCIÓN
+    # 4. MÓDULO DE INTERCEPCIÓN (Fuente Opcional)
     st.write("---")
     st.header("📡 Módulo de Interceptación")
     with st.expander("📝 Registrar nueva interceptación"):
-        with st.form("interceptor_form"):
+        with st.form("interceptor_form", clear_on_submit=True):
             code_int = st.text_input("Código interceptado:")
-            origen_int = st.text_input("Fuente:")
+            origen_int = st.text_input("Fuente (Opcional):")
             if st.form_submit_button("REGISTRAR"):
-                st.session_state.interceptados.append({"codigo": code_int, "origen": origen_int})
-                st.success("Registrado.")
+                if not code_int:
+                    st.error("Error: El Código es obligatorio.")
+                else:
+                    origen = origen_int if origen_int else "Desconocido"
+                    st.session_state.interceptados.append({"codigo": code_int, "origen": origen})
+                    st.success("Mensaje registrado.")
 
     if st.session_state.interceptados:
         st.subheader("Códigos bajo análisis:")
