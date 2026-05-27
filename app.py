@@ -1,107 +1,94 @@
 import streamlit as st
 import datetime
 
-# ==========================================
-#       MOTOR DE CIFRADO "ENIGMA" O.I.M.C.
-# ==========================================
-# Abecedario Maestro (27 caracteres)
+# --- CONFIGURACIÓN DEL MOTOR ---
 ABECEDARIO = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
 
-def obtener_desplazamiento_enigma():
-    """
-    Simula el giro del rotor Enigma basándose en la fecha actual.
-    El cálculo cambia automáticamente cada día.
-    Clave Diaria = (Día * Mes) + Año_Corto
-    """
+def obtener_desfase_diario():
     hoy = datetime.date.today()
-    clave_maestra = (hoy.day * hoy.month) + (hoy.year % 100)
-    
-    # El desplazamiento se ajusta al tamaño del abecedario
-    return clave_maestra % len(ABECEDARIO)
+    semana = hoy.isocalendar()[1]
+    dia_semana = hoy.isoweekday()
+    # Fórmula de desfase: Día*Mes + Semana*DiaSemana + Año
+    return ((hoy.day * hoy.month) + (semana * dia_semana) + (hoy.year % 100)) % 27
 
-def motor_enigma(texto, modo='cifrar'):
-    """
-    Aplica la rotación Enigma a cada letra.
-    """
-    n = len(ABECEDARIO)
-    desplazamiento = obtener_desplazamiento_enigma()
+def motor_enigma(texto, desfase, modo='cifrar'):
+    n = 27
+    desp = desfase if modo == 'cifrar' else -desfase
     
-    # Si desciframos, invertimos el giro
-    if modo == 'descifrar':
-        desplazamiento = -desplazamiento
-        
+    # Capa Anti-IA: Inversión del texto
+    if modo == 'cifrar': texto = texto[::-1]
+    
     resultado = ""
     for char in texto.upper():
         if char in ABECEDARIO:
-            # Encuentra la letra, calcula la nueva posición y la devuelve
-            indice_actual = ABECEDARIO.index(char)
-            nuevo_indice = (indice_actual + desplazamiento) % n
-            resultado += ABECEDARIO[nuevo_indice]
-        else:
-            # Mantiene espacios y números intactos
-            resultado += char
+            idx = (ABECEDARIO.index(char) + desp) % n
+            resultado += ABECEDARIO[idx]
+        else: resultado += char
+            
+    if modo == 'descifrar': resultado = resultado[::-1]
     return resultado
 
-# ==========================================
-#       INTERFAZ STREAMLIT O.I.M.C.
-# ==========================================
-# Configuración de la página
-st.set_page_config(page_title="O.I.M.C. Enigma", page_icon="🔐", layout="wide")
+# --- ESTADO DE SESIÓN ---
+if 'autenticado' not in st.session_state: st.session_state.autenticado = False
+if 'historial' not in st.session_state: st.session_state.historial = []
 
-st.title("CENTRO DE MANDO O.I.M.C.")
-st.write("---")
+# --- INTERFAZ DE LOGIN ---
+if not st.session_state.autenticado:
+    st.set_page_config(page_title="Acceso O.I.M.C.", page_icon="🔐")
+    st.title("🔒 ACCESO O.I.M.C.")
+    if st.text_input("Clave de Acceso:", type="password") == "OIMC2026":
+        st.session_state.autenticado = True
+        st.rerun()
+else:
+    st.set_page_config(page_title="Centro de Mando O.I.M.C.", page_icon="🔐", layout="wide")
+    
+    # --- BARRA LATERAL ---
+    st.sidebar.title("🔐 SESIÓN ACTIVA")
+    usuario = st.sidebar.selectbox("Miembro:", ["JUAN (LÍDER)", "GAIZKA", "IÑAKI", "MIKEL"])
+    
+    if usuario == "JUAN (LÍDER)":
+        st.sidebar.info(f"⚙️ Desfase técnico hoy: {obtener_desfase_diario()}")
+    
+    if st.sidebar.button("CERRAR SESIÓN"):
+        st.session_state.autenticado = False
+        st.rerun()
 
-# Barra lateral para el control de usuario y equipo
-st.sidebar.header("IDENTIFICACIÓN")
-usuario_activo = st.sidebar.selectbox("Miembro", ["JUAN (LÍDER)", "GAIZKA", "IÑAKI", "MIKEL"])
-st.sidebar.divider()
-st.sidebar.subheader("Información de Misión")
-st.sidebar.info(f"Fecha Activa: {datetime.date.today()}")
-st.sidebar.success(f"Rotor Enigma hoy: **{obtener_desplazamiento_enigma()}** posiciones")
+    # --- ZONA PRINCIPAL ---
+    st.title("CENTRO DE MANDO O.I.M.C.")
+    st.write("---")
 
-# --- ZONA 1: CHAT DE OPERACIONES ---
-st.header("1. Chat de Operaciones (Grupal/Individual)")
-
-if 'historial' not in st.session_state:
-    st.session_state.historial = []
-
-with st.container():
-    c1, c2 = st.columns([1, 4])
-    with c1:
+    # ZONA 1: CHAT Y CIFRADO
+    st.header("1. Chat de Operaciones")
+    col_dest, col_msg = st.columns([1, 3])
+    with col_dest:
         destinatario = st.selectbox("PARA:", ["OIMC_GRUPO", "GAIZKA", "IÑAKI", "MIKEL"])
-    with c2:
+    with col_msg:
         msg_input = st.text_input("Mensaje a enviar:")
 
-    if st.button("Enviar Cifrado", use_container_width=True):
+    if st.button("CIFRAR Y ENVIAR", use_container_width=True):
         if msg_input:
-            msg_cifrado = motor_enigma(msg_input, 'cifrar')
-            paquete = f"DE:{usuario_activo} | PARA:{destinatario} | MSG:{msg_cifrado}"
+            msg_cifrado = motor_enigma(msg_input, obtener_desfase_diario(), 'cifrar')
+            paquete = f"DE:{usuario} | PARA:{destinatario} | MSG:{msg_cifrado}"
             st.session_state.historial.append(paquete)
-            st.toast("Mensaje enviado y cifrado en el historial grupal.")
+            st.toast("Mensaje enviado y cifrado.")
 
-    st.subheader("Bandeja de Entrada Grupal (Cifrada)")
-    with st.expander("Ver mensajes recientes del equipo (Solo OIMC)", expanded=True):
-        if not st.session_state.historial:
-            st.write("*No hay mensajes registrados hoy.*")
-        for m in st.session_state.historial[-10:]: # Muestra los últimos 10
+    st.subheader("Bandeja de Entrada (Cifrada)")
+    with st.expander("Ver historial reciente", expanded=True):
+        for m in st.session_state.historial[-10:]:
             st.text(m)
 
-# --- ZONA 2: DECODIFICACIÓN ---
-st.write("---")
-st.header("2. Herramienta de Decodificación")
-
-with st.container():
-    paquete_recibido = st.text_input("Pega aquí el mensaje cifrado recibido:")
-    if st.button("Descifrar con Enigma", use_container_width=True):
-        if paquete_recibido:
-            # Intenta desglosar el paquete si tiene el formato "DE:X | PARA:Y | MSG:Z"
-            if "| MSG:" in paquete_recibido:
-                partes = paquete_recibido.split("|")
-                emisor = partes[0].split(":")[1]
-                msg_cifrado = partes[2].split(":")[1].strip()
-                result = motor_enigma(msg_cifrado, 'descifrar')
-                st.success(f"MENSAJE DESCIFRADO (De: {emisor}):\n**{result}**")
-            else:
-                # Si es texto suelto, lo descifra directamente
-                result = motor_enigma(paquete_recibido, 'descifrar')
-                st.success(f"RESULTADO DESCIFRADO:\n**{result}**")
+    # ZONA 2: MÓDULO TÁCTICO DE DESCIFRADO
+    st.write("---")
+    st.header("2. Módulo de Descifrado Táctico")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        desfase_input = st.number_input("Ajustar Desfase:", min_value=0, max_value=26, value=obtener_desfase_diario())
+    with col2:
+        cifrado_in = st.text_input("Pegar paquete de datos recibido:")
+    
+    if st.button("EJECUTAR DESCIFRADO", use_container_width=True):
+        if cifrado_in:
+            # Limpiamos el texto si viene con formato "DE:X | PARA:Y | MSG:Z"
+            texto_a_procesar = cifrado_in.split("MSG:")[-1] if "MSG:" in cifrado_in else cifrado_in
+            res = motor_enigma(texto_a_procesar.strip(), desfase_input, 'descifrar')
+            st.success(f"MENSAJE RECUPERADO:\n**{res}**")
