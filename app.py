@@ -1,7 +1,10 @@
 import streamlit as st
 import datetime
+import json
+import os
 
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN Y PERSISTENCIA ---
+ARCHIVO_DATOS = "codex_data.json"
 ABECEDARIO = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
 USUARIOS = {
     "2313": "Juan", "2021": "Asier", "1365": "Jesús",
@@ -9,6 +12,24 @@ USUARIOS = {
     "7467": "Iñaki", "7562": "Erika", "9786": "Nahia",
     "1053": "Amets", "2325": "MÁQUINA ENIGMA"
 }
+
+def guardar_en_disco():
+    datos = {
+        "archivo": st.session_state.archivo_mensajes,
+        "interceptados": st.session_state.interceptados
+    }
+    with open(ARCHIVO_DATOS, "w") as f:
+        json.dump(datos, f)
+
+def cargar_desde_disco():
+    if os.path.exists(ARCHIVO_DATOS):
+        with open(ARCHIVO_DATOS, "r") as f:
+            datos = json.load(f)
+            st.session_state.archivo_mensajes = datos.get("archivo", {})
+            st.session_state.interceptados = datos.get("interceptados", [])
+    else:
+        st.session_state.archivo_mensajes = {}
+        st.session_state.interceptados = []
 
 # --- LÓGICA DEL MOTOR ENIGMA ---
 def calcular_desfase(fecha):
@@ -19,21 +40,20 @@ def motor_enigma(texto, desfase, modo='cifrar'):
     n = 27
     desp = desfase if modo == 'cifrar' else -desfase
     if modo == 'cifrar': texto = texto[::-1]
-    
     resultado = ""
     for char in texto.upper():
         if char in ABECEDARIO:
             idx = (ABECEDARIO.index(char) + desp) % n
             resultado += ABECEDARIO[idx]
         else: resultado += char
-    
     if modo == 'descifrar': resultado = resultado[::-1]
     return resultado
 
 # --- ESTADO DE SESIÓN ---
 if 'usuario_logueado' not in st.session_state: st.session_state.usuario_logueado = None
-if 'archivo_mensajes' not in st.session_state: st.session_state.archivo_mensajes = {}
-if 'interceptados' not in st.session_state: st.session_state.interceptados = []
+if 'datos_cargados' not in st.session_state:
+    cargar_desde_disco()
+    st.session_state.datos_cargados = True
 
 # --- INTERFAZ ---
 st.set_page_config(page_title="CODEX DELTA", page_icon="🔐", layout="centered")
@@ -45,8 +65,7 @@ if st.session_state.usuario_logueado is None:
         if pin in USUARIOS:
             st.session_state.usuario_logueado = USUARIOS[pin]
             st.rerun()
-        else:
-            st.error("PIN INVÁLIDO")
+        else: st.error("PIN INVÁLIDO")
 else:
     st.sidebar.write(f"**Operativo:** {st.session_state.usuario_logueado}")
     if st.sidebar.button("CERRAR SESIÓN"):
@@ -60,8 +79,7 @@ else:
     msg_input = st.text_input("Mensaje a cifrar:")
     if st.button("CIFRAR"):
         desfase = calcular_desfase(datetime.date.today())
-        cifrado = motor_enigma(msg_input, desfase, 'cifrar')
-        st.code(cifrado)
+        st.code(motor_enigma(msg_input, desfase, 'cifrar'))
 
     # 2. DESCIFRADO
     st.write("---")
@@ -69,28 +87,26 @@ else:
     fecha_dec = st.date_input("Fecha del mensaje:")
     cifrado_in = st.text_input("Pegar mensaje cifrado:")
     if st.button("DESCIFRAR"):
-        desfase = calcular_desfase(fecha_dec)
-        res = motor_enigma(cifrado_in, desfase, 'descifrar')
-        st.success(f"Resultado: {res}")
+        st.success(f"Resultado: {motor_enigma(cifrado_in, calcular_desfase(fecha_dec), 'descifrar')}")
 
     # 3. ARCHIVO DE INTELIGENCIA
     st.write("---")
     st.header("3. Archivo de Inteligencia")
-    with st.expander("💾 Guardar mensaje en archivo"):
-        msg_to_save = st.text_input("Mensaje cifrado a guardar:")
-        fecha_save = st.date_input("Fecha original:")
+    with st.expander("💾 Guardar mensaje"):
+        msg_to_save = st.text_input("Mensaje cifrado:")
+        fecha_save = st.date_input("Fecha:")
         if st.button("GUARDAR"):
-            fecha_str = str(fecha_save)
-            if fecha_str not in st.session_state.archivo_mensajes: st.session_state.archivo_mensajes[fecha_str] = []
-            st.session_state.archivo_mensajes[fecha_str].append(msg_to_save)
-            st.success("Guardado.")
+            f_str = str(fecha_save)
+            if f_str not in st.session_state.archivo_mensajes: st.session_state.archivo_mensajes[f_str] = []
+            st.session_state.archivo_mensajes[f_str].append(msg_to_save)
+            guardar_en_disco()
+            st.success("Guardado permanentemente.")
     
     fecha_query = st.date_input("Consultar fecha:")
-    if st.button("BUSCAR ARCHIVOS"):
-        mensajes = st.session_state.archivo_mensajes.get(str(fecha_query), [])
-        for m in mensajes: st.code(m)
+    if st.button("BUSCAR"):
+        for m in st.session_state.archivo_mensajes.get(str(fecha_query), []): st.code(m)
 
-    # 4. MÓDULO DE INTERCEPCIÓN (Fuente Opcional)
+    # 4. INTERCEPCIÓN
     st.write("---")
     st.header("📡 Módulo de Interceptación")
     with st.expander("📝 Registrar nueva interceptación"):
@@ -98,13 +114,11 @@ else:
             code_int = st.text_input("Código interceptado:")
             origen_int = st.text_input("Fuente (Opcional):")
             if st.form_submit_button("REGISTRAR"):
-                if not code_int:
-                    st.error("Error: El Código es obligatorio.")
-                else:
-                    origen = origen_int if origen_int else "Desconocido"
-                    st.session_state.interceptados.append({"codigo": code_int, "origen": origen})
-                    st.success("Mensaje registrado.")
-
+                if code_int:
+                    st.session_state.interceptados.append({"codigo": code_int, "origen": origen_int or "Desconocido"})
+                    guardar_en_disco()
+                    st.success("Registrado permanentemente.")
+    
     if st.session_state.interceptados:
         st.subheader("Códigos bajo análisis:")
         for m in st.session_state.interceptados:
