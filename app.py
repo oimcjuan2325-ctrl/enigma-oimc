@@ -10,9 +10,9 @@ USUARIOS = {
     "1053": "Amets", "2325": "MÁQUINA ENIGMA"
 }
 
-# --- LÓGICA DEL MOTOR ENIGMA (NUEVA FÓRMULA DE ALTA SEGURIDAD) ---
+# --- LÓGICA DEL MOTOR ENIGMA ---
 def calcular_desfase(fecha):
-    # Fórmula de alta volatilidad: los resultados varían drásticamente día a día
+    # Fórmula de alta volatilidad para máxima seguridad
     factor = (fecha.year * 13) + (fecha.month * 31) + (fecha.day ** 2) + (fecha.isocalendar()[1] * 7)
     return factor % 27
 
@@ -28,11 +28,13 @@ def motor_enigma(texto, desfase, modo='cifrar'):
             resultado += ABECEDARIO[idx]
         else: resultado += char
     
-    if modo == 'descifrar': resultado = resultado[::-1] # Inversión final
+    if modo == 'descifrar': resultado = resultado[::-1]
     return resultado
 
 # --- ESTADO DE SESIÓN ---
 if 'usuario_logueado' not in st.session_state: st.session_state.usuario_logueado = None
+if 'archivo_mensajes' not in st.session_state: st.session_state.archivo_mensajes = {}
+if 'interceptados' not in st.session_state: st.session_state.interceptados = []
 
 # --- INTERFAZ ---
 st.set_page_config(page_title="CODEX DELTA", page_icon="🔐", layout="centered")
@@ -47,8 +49,7 @@ if st.session_state.usuario_logueado is None:
         else:
             st.error("PIN INVÁLIDO")
 else:
-    usuario = st.session_state.usuario_logueado
-    st.sidebar.write(f"**Operativo:** {usuario}")
+    st.sidebar.write(f"**Operativo:** {st.session_state.usuario_logueado}")
     if st.sidebar.button("CERRAR SESIÓN"):
         st.session_state.usuario_logueado = None
         st.rerun()
@@ -66,9 +67,44 @@ else:
     # 2. DESCIFRADO
     st.write("---")
     st.header("2. Descifrado")
-    fecha_input = st.date_input("Fecha del mensaje:")
+    fecha_dec = st.date_input("Fecha del mensaje:")
     cifrado_in = st.text_input("Pegar mensaje cifrado:")
     if st.button("DESCIFRAR"):
-        desfase = calcular_desfase(fecha_input)
+        desfase = calcular_desfase(fecha_dec)
         res = motor_enigma(cifrado_in, desfase, 'descifrar')
         st.success(f"Resultado: {res}")
+
+    # 3. ARCHIVO DE INTELIGENCIA
+    st.write("---")
+    st.header("3. Archivo de Inteligencia")
+    with st.expander("💾 Guardar mensaje en archivo"):
+        msg_to_save = st.text_input("Mensaje cifrado a guardar:")
+        fecha_save = st.date_input("Fecha original:")
+        if st.button("GUARDAR"):
+            fecha_str = str(fecha_save)
+            if fecha_str not in st.session_state.archivo_mensajes: st.session_state.archivo_mensajes[fecha_str] = []
+            st.session_state.archivo_mensajes[fecha_str].append(msg_to_save)
+            st.success("Guardado.")
+    
+    fecha_query = st.date_input("Consultar fecha:")
+    if st.button("BUSCAR ARCHIVOS"):
+        mensajes = st.session_state.archivo_mensajes.get(str(fecha_query), [])
+        for m in mensajes: st.code(m)
+
+    # 4. MÓDULO DE INTERCEPCIÓN
+    st.write("---")
+    st.header("📡 Módulo de Interceptación")
+    with st.expander("📝 Registrar nueva interceptación"):
+        with st.form("interceptor_form"):
+            code_int = st.text_input("Código interceptado:")
+            origen_int = st.text_input("Fuente:")
+            if st.form_submit_button("REGISTRAR"):
+                st.session_state.interceptados.append({"codigo": code_int, "origen": origen_int})
+                st.success("Registrado.")
+
+    if st.session_state.interceptados:
+        st.subheader("Códigos bajo análisis:")
+        for m in st.session_state.interceptados:
+            col1, col2 = st.columns([3, 1])
+            with col1: st.warning(f"DE: {m['origen']} | CÓDIGO: {m['codigo']}")
+            with col2: st.link_button("🤖 MODO IA", "https://www.google.com")
