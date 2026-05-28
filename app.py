@@ -1,12 +1,10 @@
 import streamlit as st
 import datetime
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Sistema O.I.M.C.", page_icon="🔒")
+st.set_page_config(page_title="Red O.I.M.C.", page_icon="🔒")
 
-# --- PERSISTENCIA DE MENSAJES ---
-if 'buzon' not in st.session_state:
-    st.session_state.buzon = []
+# --- ESTADO PERSISTENTE ---
+if 'buzon' not in st.session_state: st.session_state.buzon = []
 
 USUARIOS = {
     "Juan": "2313", "Asier": "2021", "Jesús": "1365", "Yolanda": "1460",
@@ -15,18 +13,15 @@ USUARIOS = {
 }
 
 # --- LÓGICA DE CIFRADO ---
-def calcular_desfase():
-    fecha = datetime.date.today()
+def calcular_desfase(fecha):
     return (fecha.year * 13 + fecha.month * 31 + fecha.day**2 + fecha.isocalendar()[1] * 7) % 27
 
-def procesar_texto(texto, modo):
+def procesar_texto(texto, modo, fecha):
     alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
-    desfase = calcular_desfase()
+    desfase = calcular_desfase(fecha)
     if modo == "Descifrar": desfase = -desfase
-    
     texto = texto.upper()
     if modo == "Cifrar": texto = texto[::-1]
-        
     resultado = ""
     for char in texto:
         if char in alfabeto:
@@ -36,7 +31,7 @@ def procesar_texto(texto, modo):
             resultado += char
     return resultado if modo == "Cifrar" else resultado[::-1]
 
-# --- LOGIN ---
+# --- INTERFAZ ---
 if 'usuario' not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
@@ -46,33 +41,38 @@ if st.session_state.usuario is None:
         if usuario_input in USUARIOS and pin == USUARIOS[usuario_input]:
             st.session_state.usuario = usuario_input
             st.rerun()
-        else: st.error("Credenciales incorrectas")
 else:
     st.title("Red de Inteligencia O.I.M.C.")
-    st.write(f"Operativo: **{st.session_state.usuario}**")
+    # Selector de modo
+    opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado"])
     
-    modo = st.radio("Acción:", ["Cifrar", "Descifrar"])
-    mensaje = st.text_area("Mensaje:")
+    # Fecha selector
+    fecha_msg = st.date_input("Fecha del mensaje:", datetime.date.today())
     
-    if st.button("EJECUTAR"):
-        resultado = procesar_texto(mensaje, modo)
-        st.code(resultado)
-        
-        # Guardar en buzón si es cifrado
-        if modo == "Cifrar":
-            st.session_state.buzon.append({"agente": st.session_state.usuario, "msj": resultado})
-            st.success("Mensaje registrado en la red.")
+    if opcion in ["Cifrar", "Descifrar"]:
+        mensaje = st.text_area("Mensaje:")
+        if st.button("PROCESAR"):
+            resultado = procesar_texto(mensaje, opcion, fecha_msg)
+            st.code(resultado)
+    
+    elif opcion == "Guardar mensaje cifrado":
+        msj_cifrado = st.text_area("Introduce el mensaje ya cifrado:")
+        if st.button("ARCHIVAR EN RED"):
+            st.session_state.buzon.append({
+                "agente": st.session_state.usuario,
+                "fecha": fecha_msg,
+                "msj": msj_cifrado
+            })
+            st.success("Mensaje archivado correctamente.")
 
-    # --- PANEL DE CONTROL ---
+    # --- PANEL MAQUINA ENIGMA ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
-        st.warning("⚠️ PANEL DE CONTROL - AUDITORÍA DE RED")
+        st.warning("⚠️ AUDITORÍA DE RED")
         for i, item in enumerate(st.session_state.buzon):
-            st.text(f"{i+1}. De {item['agente']}: {item['msj']}")
-        
+            st.write(f"**[{item['fecha']}]** Agente {item['agente']}: `{item['msj']}`")
         if st.button("🚨 BOTÓN DE PÁNICO: BORRAR TODO"):
             st.session_state.buzon = []
-            st.session_state.clear()
             st.rerun()
             
     if st.button("Cerrar Sesión"):
