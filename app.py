@@ -2,21 +2,16 @@ import streamlit as st
 import datetime
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Gestión Académica", page_icon="🔒")
+st.set_page_config(page_title="Sistema O.I.M.C.", page_icon="🔒")
 
-# Diccionario de usuarios y sus PINs
+# --- PERSISTENCIA DE MENSAJES ---
+if 'buzon' not in st.session_state:
+    st.session_state.buzon = []
+
 USUARIOS = {
-    "Juan": "2313",
-    "Asier": "2021",
-    "Jesús": "1365",
-    "Yolanda": "1460",
-    "Mikel": "2013",
-    "Gaizka": "9837",
-    "Iñaki": "7467",
-    "Erika": "7562",
-    "Nahia": "9786",
-    "Amets": "1053",
-    "MAQUINA ENIGMA": "2325"
+    "Juan": "2313", "Asier": "2021", "Jesús": "1365", "Yolanda": "1460",
+    "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", "Erika": "7562",
+    "Nahia": "9786", "Amets": "1053", "MAQUINA ENIGMA": "2325"
 }
 
 # --- LÓGICA DE CIFRADO ---
@@ -41,35 +36,42 @@ def procesar_texto(texto, modo):
             resultado += char
     return resultado if modo == "Cifrar" else resultado[::-1]
 
-# --- SISTEMA DE LOGIN ---
+# --- LOGIN ---
 if 'usuario' not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
-    st.title("Acceso al Sistema")
     usuario_input = st.text_input("ID de Usuario:")
     pin = st.text_input("PIN:", type="password")
-    
     if st.button("ACCEDER"):
         if usuario_input in USUARIOS and pin == USUARIOS[usuario_input]:
             st.session_state.usuario = usuario_input
             st.rerun()
-        else:
-            st.error("Credenciales incorrectas")
+        else: st.error("Credenciales incorrectas")
 else:
-    st.title("Sistema de Gestión Académica")
-    st.write(f"Conectado como: **{st.session_state.usuario}**")
+    st.title("Red de Inteligencia O.I.M.C.")
+    st.write(f"Operativo: **{st.session_state.usuario}**")
     
     modo = st.radio("Acción:", ["Cifrar", "Descifrar"])
     mensaje = st.text_area("Mensaje:")
     
     if st.button("EJECUTAR"):
-        st.code(procesar_texto(mensaje, modo))
-    
-    # --- PRIVILEGIOS DE ADMINISTRADOR ---
+        resultado = procesar_texto(mensaje, modo)
+        st.code(resultado)
+        
+        # Guardar en buzón si es cifrado
+        if modo == "Cifrar":
+            st.session_state.buzon.append({"agente": st.session_state.usuario, "msj": resultado})
+            st.success("Mensaje registrado en la red.")
+
+    # --- PANEL DE CONTROL ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
-        st.warning("PANEL DE ADMINISTRACIÓN")
-        if st.button("🚨 BOTÓN DE PÁNICO: REINICIAR RED"):
+        st.warning("⚠️ PANEL DE CONTROL - AUDITORÍA DE RED")
+        for i, item in enumerate(st.session_state.buzon):
+            st.text(f"{i+1}. De {item['agente']}: {item['msj']}")
+        
+        if st.button("🚨 BOTÓN DE PÁNICO: BORRAR TODO"):
+            st.session_state.buzon = []
             st.session_state.clear()
             st.rerun()
             
