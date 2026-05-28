@@ -3,7 +3,6 @@ import datetime
 
 st.set_page_config(page_title="Red O.I.M.C.", page_icon="🔒")
 
-# --- ESTADO PERSISTENTE ---
 if 'buzon' not in st.session_state: st.session_state.buzon = []
 
 USUARIOS = {
@@ -12,16 +11,20 @@ USUARIOS = {
     "Nahia": "9786", "Amets": "1053", "MAQUINA ENIGMA": "2325"
 }
 
-# --- LÓGICA DE CIFRADO ---
 def calcular_desfase(fecha):
     return (fecha.year * 13 + fecha.month * 31 + fecha.day**2 + fecha.isocalendar()[1] * 7) % 27
 
-def procesar_texto(texto, modo, fecha):
+def procesar_texto(texto, modo):
+    # Automático: usa siempre la fecha de HOY
+    fecha = datetime.date.today()
     alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
     desfase = calcular_desfase(fecha)
+    
     if modo == "Descifrar": desfase = -desfase
+    
     texto = texto.upper()
     if modo == "Cifrar": texto = texto[::-1]
+        
     resultado = ""
     for char in texto:
         if char in alfabeto:
@@ -41,29 +44,28 @@ if st.session_state.usuario is None:
         if usuario_input in USUARIOS and pin == USUARIOS[usuario_input]:
             st.session_state.usuario = usuario_input
             st.rerun()
+        else: st.error("Credenciales incorrectas")
 else:
     st.title("Red de Inteligencia O.I.M.C.")
-    # Selector de modo
-    opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado"])
+    st.write(f"Operativo: **{st.session_state.usuario}**")
     
-    # Fecha selector
-    fecha_msg = st.date_input("Fecha del mensaje:", datetime.date.today())
+    opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado"])
     
     if opcion in ["Cifrar", "Descifrar"]:
         mensaje = st.text_area("Mensaje:")
         if st.button("PROCESAR"):
-            resultado = procesar_texto(mensaje, opcion, fecha_msg)
-            st.code(resultado)
-    
+            st.code(procesar_texto(mensaje, opcion))
+            
     elif opcion == "Guardar mensaje cifrado":
-        msj_cifrado = st.text_area("Introduce el mensaje ya cifrado:")
+        msj_cifrado = st.text_area("Introduce el mensaje cifrado:")
+        fecha_archivar = st.date_input("Fecha en que se cifró:", datetime.date.today())
         if st.button("ARCHIVAR EN RED"):
             st.session_state.buzon.append({
                 "agente": st.session_state.usuario,
-                "fecha": fecha_msg,
+                "fecha": fecha_archivar,
                 "msj": msj_cifrado
             })
-            st.success("Mensaje archivado correctamente.")
+            st.success("Mensaje archivado.")
 
     # --- PANEL MAQUINA ENIGMA ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
