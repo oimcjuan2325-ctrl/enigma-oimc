@@ -53,13 +53,11 @@ else:
         mensaje = st.text_area("Mensaje:")
         if st.button("PROCESAR"):
             resultado = procesar_texto(mensaje, opcion, fecha_op)
-            st.code(resultado)
-            # Esto añade un botón nativo de copiar en el código
-            st.success("Resultado procesado.")
+            st.code(resultado) # ¡Botón de copiar automático aquí!
             
     elif opcion == "Guardar mensaje cifrado":
         msj_cifrado = st.text_area("Introduce el mensaje cifrado:")
-        fecha_archivar = st.date_input("Fecha en que se cifró:", datetime.date.today())
+        fecha_archivar = st.date_input("Fecha de origen:", datetime.date.today())
         if st.button("ARCHIVAR EN RED"):
             st.session_state.buzon.append({
                 "agente": st.session_state.usuario,
@@ -74,14 +72,16 @@ else:
         if not mis_mensajes:
             st.info("No hay mensajes archivados.")
         for item in mis_mensajes:
-            st.write(f"📅 **{item['fecha']}**: `{item['msj']}`")
+            st.write(f"📅 **{item['fecha']}**")
+            st.code(item['msj']) # ¡Botón de copiar automático aquí también!
 
     # --- PANEL MAQUINA ENIGMA ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
         st.warning("⚠️ AUDITORÍA DE RED")
         for i, item in enumerate(st.session_state.buzon):
-            st.write(f"**[{item['fecha']}]** Agente {item['agente']}: `{item['msj']}`")
+            st.write(f"**[{item['fecha']}]** Agente {item['agente']}:")
+            st.code(item['msj']) # ¡Y aquí!
         if st.button("🚨 BOTÓN DE PÁNICO: BORRAR TODO"):
             st.session_state.buzon = []
             st.rerun()
