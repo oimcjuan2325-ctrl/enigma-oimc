@@ -4,6 +4,21 @@ import datetime
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Gestión Académica", page_icon="🔒")
 
+# Diccionario de usuarios y sus PINs
+USUARIOS = {
+    "Juan": "2313",
+    "Asier": "2021",
+    "Jesús": "1365",
+    "Yolanda": "1460",
+    "Mikel": "2013",
+    "Gaizka": "9837",
+    "Iñaki": "7467",
+    "Erika": "7562",
+    "Nahia": "9786",
+    "Amets": "1053",
+    "MAQUINA ENIGMA": "2325"
+}
+
 # --- LÓGICA DE CIFRADO ---
 def calcular_desfase():
     fecha = datetime.date.today()
@@ -12,14 +27,10 @@ def calcular_desfase():
 def procesar_texto(texto, modo):
     alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
     desfase = calcular_desfase()
+    if modo == "Descifrar": desfase = -desfase
     
-    # Si desciframos, el desfase es el inverso
-    if modo == "Descifrar":
-        desfase = -desfase
-        
     texto = texto.upper()
-    if modo == "Cifrar":
-        texto = texto[::-1]
+    if modo == "Cifrar": texto = texto[::-1]
         
     resultado = ""
     for char in texto:
@@ -28,12 +39,10 @@ def procesar_texto(texto, modo):
             resultado += alfabeto[idx]
         else:
             resultado += char
-            
     return resultado if modo == "Cifrar" else resultado[::-1]
 
 # --- SISTEMA DE LOGIN ---
-if 'usuario' not in st.session_state:
-    st.session_state.usuario = None
+if 'usuario' not in st.session_state: st.session_state.usuario = None
 
 if st.session_state.usuario is None:
     st.title("Acceso al Sistema")
@@ -41,16 +50,12 @@ if st.session_state.usuario is None:
     pin = st.text_input("PIN:", type="password")
     
     if st.button("ACCEDER"):
-        if usuario_input == "MAQUINA ENIGMA" and pin == "ADMIN123":
-            st.session_state.usuario = "MAQUINA ENIGMA"
-            st.rerun()
-        elif usuario_input == "AGENTE" and pin == "1234":
-            st.session_state.usuario = "AGENTE"
+        if usuario_input in USUARIOS and pin == USUARIOS[usuario_input]:
+            st.session_state.usuario = usuario_input
             st.rerun()
         else:
             st.error("Credenciales incorrectas")
 else:
-    # --- PANEL DE CONTROL ---
     st.title("Sistema de Gestión Académica")
     st.write(f"Conectado como: **{st.session_state.usuario}**")
     
@@ -60,7 +65,7 @@ else:
     if st.button("EJECUTAR"):
         st.code(procesar_texto(mensaje, modo))
     
-    # --- BOTÓN DE PÁNICO (SOLO MAQUINA ENIGMA) ---
+    # --- PRIVILEGIOS DE ADMINISTRADOR ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
         st.warning("PANEL DE ADMINISTRACIÓN")
