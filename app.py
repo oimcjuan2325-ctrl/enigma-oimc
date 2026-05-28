@@ -18,10 +18,8 @@ def procesar_texto(texto, modo, fecha):
     alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
     desfase = calcular_desfase(fecha)
     if modo == "Descifrar": desfase = -desfase
-    
     texto = texto.upper()
     if modo == "Cifrar": texto = texto[::-1]
-        
     resultado = ""
     for char in texto:
         if char in alfabeto:
@@ -44,19 +42,16 @@ if st.session_state.usuario is None:
         else: st.error("Credenciales incorrectas")
 else:
     st.title("Red de Inteligencia O.I.M.C.")
-    st.write(f"Operativo: **{st.session_state.usuario}**")
-    
     opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado", "Ver mis mensajes"])
     
     if opcion in ["Cifrar", "Descifrar"]:
-        fecha_op = st.date_input("Fecha de referencia:", datetime.date.today())
+        fecha_op = st.date_input("Fecha:", datetime.date.today())
         mensaje = st.text_area("Mensaje:")
         if st.button("PROCESAR"):
-            resultado = procesar_texto(mensaje, opcion, fecha_op)
-            st.code(resultado) # ¡Botón de copiar automático aquí!
+            st.code(procesar_texto(mensaje, opcion, fecha_op))
             
     elif opcion == "Guardar mensaje cifrado":
-        msj_cifrado = st.text_area("Introduce el mensaje cifrado:")
+        msj_cifrado = st.text_area("Mensaje cifrado:")
         fecha_archivar = st.date_input("Fecha de origen:", datetime.date.today())
         if st.button("ARCHIVAR EN RED"):
             st.session_state.buzon.append({
@@ -67,25 +62,28 @@ else:
             st.success("Mensaje archivado.")
             
     elif opcion == "Ver mis mensajes":
-        st.subheader("Tu historial:")
         mis_mensajes = [m for m in st.session_state.buzon if m['agente'] == st.session_state.usuario]
-        if not mis_mensajes:
-            st.info("No hay mensajes archivados.")
-        for item in mis_mensajes:
+        for i, item in enumerate(mis_mensajes):
             st.write(f"📅 **{item['fecha']}**")
-            st.code(item['msj']) # ¡Botón de copiar automático aquí también!
+            st.code(item['msj'])
 
-    # --- PANEL MAQUINA ENIGMA ---
+    # --- PANEL MAQUINA ENIGMA (ADMIN) ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
         st.warning("⚠️ AUDITORÍA DE RED")
+        agente_filtro = st.selectbox("Filtrar por agente:", ["Todos"] + list(USUARIOS.keys()))
+        
         for i, item in enumerate(st.session_state.buzon):
-            st.write(f"**[{item['fecha']}]** Agente {item['agente']}:")
-            st.code(item['msj']) # ¡Y aquí!
-        if st.button("🚨 BOTÓN DE PÁNICO: BORRAR TODO"):
-            st.session_state.buzon = []
-            st.rerun()
-            
+            if agente_filtro == "Todos" or item['agente'] == agente_filtro:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(f"**[{item['fecha']}]** {item['agente']}:")
+                    st.code(item['msj'])
+                with col2:
+                    if st.button("Borrar", key=f"del_{i}"):
+                        st.session_state.buzon.pop(i)
+                        st.rerun()
+
     if st.button("Cerrar Sesión"):
         st.session_state.usuario = None
         st.rerun()
