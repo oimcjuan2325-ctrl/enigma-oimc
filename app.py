@@ -14,8 +14,7 @@ USUARIOS = {
 def calcular_desfase(fecha):
     return (fecha.year * 13 + fecha.month * 31 + fecha.day**2 + fecha.isocalendar()[1] * 7) % 27
 
-def procesar_texto(texto, modo):
-    fecha = datetime.date.today()
+def procesar_texto(texto, modo, fecha):
     alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
     desfase = calcular_desfase(fecha)
     if modo == "Descifrar": desfase = -desfase
@@ -47,16 +46,19 @@ else:
     st.title("Red de Inteligencia O.I.M.C.")
     st.write(f"Operativo: **{st.session_state.usuario}**")
     
-    # Nuevo menú extendido
     opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado", "Ver mis mensajes"])
     
     if opcion in ["Cifrar", "Descifrar"]:
+        fecha_op = st.date_input("Fecha de referencia:", datetime.date.today())
         mensaje = st.text_area("Mensaje:")
         if st.button("PROCESAR"):
-            st.code(procesar_texto(mensaje, opcion))
+            resultado = procesar_texto(mensaje, opcion, fecha_op)
+            st.code(resultado)
+            # Esto añade un botón nativo de copiar en el código
+            st.success("Resultado procesado.")
             
     elif opcion == "Guardar mensaje cifrado":
-        msj_cifrado = st.text_area("Introduce el mensaje ya cifrado:")
+        msj_cifrado = st.text_area("Introduce el mensaje cifrado:")
         fecha_archivar = st.date_input("Fecha en que se cifró:", datetime.date.today())
         if st.button("ARCHIVAR EN RED"):
             st.session_state.buzon.append({
@@ -67,17 +69,17 @@ else:
             st.success("Mensaje archivado.")
             
     elif opcion == "Ver mis mensajes":
-        st.subheader("Tu historial de cifrado:")
+        st.subheader("Tu historial:")
         mis_mensajes = [m for m in st.session_state.buzon if m['agente'] == st.session_state.usuario]
         if not mis_mensajes:
-            st.info("No hay mensajes archivados aún.")
+            st.info("No hay mensajes archivados.")
         for item in mis_mensajes:
             st.write(f"📅 **{item['fecha']}**: `{item['msj']}`")
 
     # --- PANEL MAQUINA ENIGMA ---
     if st.session_state.usuario == "MAQUINA ENIGMA":
         st.divider()
-        st.warning("⚠️ AUDITORÍA DE RED (Acceso Total)")
+        st.warning("⚠️ AUDITORÍA DE RED")
         for i, item in enumerate(st.session_state.buzon):
             st.write(f"**[{item['fecha']}]** Agente {item['agente']}: `{item['msj']}`")
         if st.button("🚨 BOTÓN DE PÁNICO: BORRAR TODO"):
