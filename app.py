@@ -1,48 +1,51 @@
-import streamlit as st
+-import streamlit as st
 import os
 import datetime
 import json
 
-# --- 1. CONFIGURACIÓN Y USUARIOS ---
+# --- 1. CONFIGURACIÓN DE ACCESO ---
 USUARIOS = {
     "Juan": "2313", "Asier": "2021", "Jesús": "1365", "Yolanda": "1460",
     "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", "Erika": "7562",
     "Nahia": "9786", "Amets": "1053", "MAQUINA_ENIGMA": "2325"
 }
 
-# --- 2. MOTOR DEL CODEX CELTA 2.0 (Lógica Matemática) ---
-def motor_codex(texto, es_cifrado, fecha_input):
-    # Extracción de valores de la fecha seleccionada
-    mes = fecha_input.month
-    dia = fecha_input.day
+# --- 2. MOTOR MATEMÁTICO: CODEX CELTA 2.0 ---
+def calcular_desplazamiento(fecha):
+    # Número base derivado de tu esquema de cifrado numérico
+    numero_base = 345324535554563 
     
-    # Tu fórmula: (Mes + Día + ClaveNumérica) / 2
-    # El 10 es un valor constante de tu esquema (puedes ajustarlo)
-    base_calculo = (mes + dia + 10) 
-    cociente = base_calculo / 2
-    resto = base_calculo % 2
+    # Filtrado dinámico por mes
+    mes_str = str(fecha.month)
+    numero_filtrado = str(numero_base)
+    for digito in mes_str:
+        numero_filtrado = numero_filtrado.replace(digito, "")
     
-    # Factor: últimos dos dígitos del cociente
-    factor = int(str(int(cociente))[-2:]) if cociente >= 10 else int(cociente)
-    desfase = (resto * factor) % 26
+    val = int(numero_filtrado)
+    cociente = val // 2
+    sobra = val % 2
     
-    # Aplicar o revertir desplazamiento
-    valor = desfase if es_cifrado else -desfase
+    # Ajuste: Sobra * últimos DOS dígitos del cociente
+    ultimos_dos = int(str(cociente)[-2:])
+    ajuste = sobra * ultimos_dos
+    
+    # Fórmula Final: (Mes + Día + Ajuste) / 2
+    desplazamiento = (fecha.month + fecha.day + ajuste) // 2
+    return desplazamiento
+
+def motor_codex(texto, es_cifrado, fecha):
+    desfase = calcular_desplazamiento(fecha)
+    if not es_cifrado: desfase = -desfase
+    
     resultado = ""
-    for char in texto.upper():
-        if char.isalpha():
-            resultado += chr(((ord(char) - 65 + valor) % 26) + 65)
+    for c in texto.upper():
+        if c.isalpha():
+            resultado += chr(((ord(c) - 65 + desfase) % 26) + 65)
         else:
-            resultado += char
+            resultado += c
     return resultado
 
-# --- 3. PERSISTENCIA DE DATOS ---
-def guardar_mensaje(usuario, msg_cifrado, fecha):
-    if not os.path.exists("data_oimc"): os.makedirs("data_oimc")
-    with open(f"data_oimc/{usuario}.txt", "a") as f:
-        f.write(json.dumps({"fecha": fecha.strftime("%d/%m/%Y"), "msg": msg_cifrado}) + "\n")
-
-# --- 4. INTERFAZ DE USUARIO ---
+# --- 3. INTERFAZ Y LÓGICA DE NAVEGACIÓN ---
 st.set_page_config(page_title="Central OIMC", layout="wide")
 
 if 'login' not in st.session_state: st.session_state.login = False
@@ -60,51 +63,49 @@ if not st.session_state.login:
 else:
     # Barra lateral
     st.sidebar.title(f"Operativo: {st.session_state.user}")
+    seccion = st.sidebar.radio("Navegación", ["Cifrar", "Descifrar", "Mis Archivos Cifrados"])
     
     # Panel Máquina Enigma
     if st.session_state.user == "MAQUINA_ENIGMA":
-        if st.sidebar.button("⚙️ Administrar Central"):
-            st.session_state.admin = True
+        if st.sidebar.button("⚙️ Administración Central"): st.session_state.admin = True
     
-    if st.session_state.get('admin'):
-        st.subheader("Panel Máquina Enigma")
-        target = st.selectbox("Seleccionar Operativo", [u for u in USUARIOS if u != "MAQUINA_ENIGMA"])
-        if st.button("Ver archivos del operativo"):
-            ruta = f"data_oimc/{target}.txt"
-            if os.path.exists(ruta):
-                with open(ruta, "r") as f:
-                    for l in f:
-                        data = json.loads(l)
-                        st.write(f"📅 {data['fecha']} | ✉️ {data['msg']}")
-            else: st.info("Esta persona aún no tiene mensajes guardados.")
-
-    # Acciones principales
-    st.title("🗂️ Central de Operaciones OIMC")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Cifrado")
+    # Lógica de las secciones
+    if seccion == "Cifrar":
+        st.subheader("Cifrar Mensaje")
         msg = st.text_area("Mensaje a cifrar")
-        if st.button("Cifrar mensaje"):
-            fecha_hoy = datetime.date.today()
-            st.session_state.cifrado_temp = motor_codex(msg, True, fecha_hoy)
-            st.code(st.session_state.cifrado_temp)
+        if st.button("Cifrar"):
+            st.session_state.temp = motor_codex(msg, True, datetime.date.today())
+            st.code(st.session_state.temp)
             
-        if st.button("Guardar en mi archivo"):
-            if 'cifrado_temp' in st.session_state:
-                guardar_mensaje(st.session_state.user, st.session_state.cifrado_temp, datetime.date.today())
-                st.success("Guardado en la base de datos OIMC.")
-            else: st.warning("Cifra un mensaje primero.")
-
-    with col2:
-        st.subheader("Descifrado")
+    elif seccion == "Descifrar":
+        st.subheader("Descifrar Mensaje")
         msg_c = st.text_input("Mensaje cifrado")
-        fecha_c = st.date_input("Fecha de cifrado original")
+        fecha_c = st.date_input("Fecha de cuando se cifró")
         if st.button("Descifrar"):
-            resultado = motor_codex(msg_c, False, fecha_c)
-            st.write(f"**Resultado:** {resultado}")
+            st.write(f"**Resultado:** {motor_codex(msg_c, False, fecha_c)}")
 
+    elif seccion == "Mis Archivos Cifrados":
+        st.subheader("📁 Mis Archivos Cifrados")
+        with st.expander("Guardar nuevo mensaje cifrado"):
+            m_c = st.text_input("Pega el mensaje cifrado aquí")
+            f_c = st.date_input("Fecha de cuando se cifró")
+            if st.button("Guardar en Mis Archivos"):
+                if not os.path.exists("data_oimc"): os.makedirs("data_oimc")
+                with open(f"data_oimc/{st.session_state.user}.txt", "a") as f:
+                    f.write(json.dumps({"fecha": f_c.strftime("%d/%m/%Y"), "msg": m_c}) + "\n")
+                st.success("Mensaje guardado correctamente.")
+        
+        st.write("---")
+        st.subheader("Ver mis mensajes")
+        ruta = f"data_oimc/{st.session_state.user}.txt"
+        if os.path.exists(ruta):
+            with open(ruta, "r") as f:
+                for l in f:
+                    data = json.loads(l)
+                    st.write(f"📅 **{data['fecha']}**: `{data['msg']}`")
+        else: st.info("No hay archivos guardados.")
+
+    # Botón de cierre
     if st.sidebar.button("Cerrar Sesión"):
-        for key in st.session_state.keys(): del st.session_state[key]
+        st.session_state.clear()
         st.rerun()
