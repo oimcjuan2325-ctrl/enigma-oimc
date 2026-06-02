@@ -1,103 +1,106 @@
 import streamlit as st
+import os
 import datetime
+import json
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Red O.I.M.C.", page_icon="🔒")
-
-if 'buzon' not in st.session_state: st.session_state.buzon = []
-
+# --- BASE DE DATOS DE USUARIOS ---
 USUARIOS = {
     "Juan": "2313", "Asier": "2021", "Jesús": "1365", "Yolanda": "1460",
     "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", "Erika": "7562",
-    "Nahia": "9786", "Amets": "1053", "MAQUINA ENIGMA": "2325"
+    "Nahia": "9786", "Amets": "1053", "MAQUINA_ENIGMA": "2325"
 }
 
-# --- LÓGICA DE CIFRADO ---
-def calcular_desfase(fecha):
-    return (fecha.year * 13 + fecha.month * 31 + fecha.day**2 + fecha.isocalendar()[1] * 7) % 27
+# --- MOTOR MATEMÁTICO: CODEX CELTA 2.0 ---
+def calcular_desplazamiento(mensaje, es_cifrado):
+    # Lógica basada en tu explicación: (Mes + Día + PalabraClave) / 2
+    # + Multiplicación por los últimos 2 dígitos del cociente
+    fecha = datetime.datetime.now()
+    mes = fecha.month
+    dia = fecha.day
+    
+    # Simulación del cálculo de la "sobra" (resto) y el "desfase"
+    base = (mes + dia + 50) 
+    cociente = base / 2
+    resto = base % 2
+    
+    # Extraer últimos 2 dígitos del cociente para el factor
+    factor = int(str(int(cociente))[-2:])
+    desplazamiento = (resto * factor) % 26
+    
+    if not es_cifrado: desplazamiento = -desplazamiento
+    return desplazamiento
 
-def procesar_texto(texto, modo, fecha):
-    alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
-    desfase = calcular_desfase(fecha)
-    if modo == "Descifrar": desfase = -desfase
-    texto = texto.upper()
-    if modo == "Cifrar": texto = texto[::-1]
+def procesar_codex(texto, es_cifrado):
+    desfase = calcular_desplazamiento(texto, es_cifrado)
     resultado = ""
-    for char in texto:
-        if char in alfabeto:
-            idx = (alfabeto.index(char) + desfase) % 27
-            resultado += alfabeto[idx]
+    for char in texto.upper():
+        if char.isalpha():
+            resultado += chr(((ord(char) - 65 + desfase) % 26) + 65)
         else:
             resultado += char
-    return resultado if modo == "Cifrar" else resultado[::-1]
+    return resultado
 
-# --- INTERFAZ Y LOGIN ---
-if 'usuario' not in st.session_state: st.session_state.usuario = None
+# --- INTERFAZ Y LÓGICA ---
+st.set_page_config(page_title="Central OIMC", layout="wide")
 
-if st.session_state.usuario is None:
-    st.title("Acceso a la Red O.I.M.C.")
-    
-    # Selección de cuenta y PIN
-    cuenta_input = st.selectbox("Selecciona tu cuenta:", [""] + list(USUARIOS.keys()))
-    pin_input = st.text_input("Introduce tu PIN:", type="password")
-    
-    if st.button("ACCEDER"):
-        if cuenta_input != "" and pin_input == USUARIOS[cuenta_input]:
-            st.session_state.usuario = cuenta_input
+if 'login' not in st.session_state: st.session_state.login = False
+
+if not st.session_state.login:
+    st.title("🔐 Central de Cifrado OIMC")
+    u = st.text_input("Usuario")
+    p = st.text_input("PIN", type="password")
+    if st.button("Entrar"):
+        if u in USUARIOS and USUARIOS[u] == p:
+            st.session_state.login = True
+            st.session_state.user = u
             st.rerun()
-        else:
-            st.error("Cuenta o PIN incorrectos")
+        else: st.error("Acceso denegado")
 else:
-    st.title("Red de Inteligencia O.I.M.C.")
-    st.write(f"Operativo: **{st.session_state.usuario}**")
+    # --- MENÚ Y ADMINISTRACIÓN ---
+    st.sidebar.title(f"Operativo: {st.session_state.user}")
     
-    opcion = st.radio("Acción:", ["Cifrar", "Descifrar", "Guardar mensaje cifrado", "Ver mis mensajes"])
+    if st.session_state.user == "MAQUINA_ENIGMA":
+        st.sidebar.subheader("⚙️ ADMINISTRACIÓN")
+        if st.sidebar.button("Administrar Central"):
+            st.session_state.modo_admin = True
     
-    if opcion in ["Cifrar", "Descifrar"]:
-        fecha_op = st.date_input("Fecha de referencia:", datetime.date.today())
-        mensaje = st.text_area("Mensaje:")
-        if st.button("PROCESAR"):
-            st.code(procesar_texto(mensaje, opcion, fecha_op))
-            
-    elif opcion == "Guardar mensaje cifrado":
-        msj_cifrado = st.text_area("Introduce el mensaje cifrado:")
-        fecha_archivar = st.date_input("Fecha de origen:", datetime.date.today())
-        if st.button("ARCHIVAR EN RED"):
-            st.session_state.buzon.append({
-                "agente": st.session_state.usuario,
-                "fecha": fecha_archivar,
-                "msj": msj_cifrado
-            })
-            st.success("Mensaje archivado correctamente.")
-            
-    elif opcion == "Ver mis mensajes":
-        st.subheader("Tu historial:")
-        mis_mensajes = [m for m in st.session_state.buzon if m['agente'] == st.session_state.usuario]
-        if not mis_mensajes:
-            st.info("No hay mensajes archivados.")
-        for item in mis_mensajes:
-            st.write(f"📅 **{item['fecha']}**")
-            st.code(item['msj'])
+    if st.session_state.get('modo_admin'):
+        st.title("⚙️ Panel Máquina Enigma")
+        target = st.selectbox("Seleccionar Operativo", [u for u in USUARIOS if u != "MAQUINA_ENIGMA"])
+        if st.button("Revisar Base de Datos"):
+            ruta = f"data_oimc/{target}.txt"
+            if os.path.exists(ruta):
+                with open(ruta, "r") as f:
+                    for l in f:
+                        data = json.loads(l)
+                        st.write(f"📅 {data['fecha']} | ✉️ {data['msg']}")
+            else: st.info("De momento esta persona no ha guardado ningún mensaje.")
+    
+    # --- OPERACIONES ---
+    st.title("🗂️ Central de Operaciones OIMC")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Cifrar y Guardar")
+        msg = st.text_area("Mensaje")
+        if st.button("Cifrar y Guardar"):
+            if msg:
+                fecha_hoy = datetime.date.today().strftime("%d/%m/%Y")
+                cifrado = procesar_codex(msg, True)
+                # Guardar persistente
+                if not os.path.exists("data_oimc"): os.makedirs("data_oimc")
+                with open(f"data_oimc/{st.session_state.user}.txt", "a") as f:
+                    f.write(json.dumps({"fecha": fecha_hoy, "msg": cifrado}) + "\n")
+                st.code(cifrado)
+                st.success(f"Guardado. Fecha: {fecha_hoy}")
+    
+    with col2:
+        st.subheader("Descifrar")
+        msg_c = st.text_input("Mensaje a descifrar")
+        if st.button("Descifrar"):
+            st.write(f"**Resultado:** {procesar_codex(msg_c, False)}")
 
-    # --- PANEL MAQUINA ENIGMA (ADMIN) ---
-    if st.session_state.usuario == "MAQUINA ENIGMA":
-        st.divider()
-        st.warning("⚠️ PANEL DE AUDITORÍA DE RED")
-        agente_filtro = st.selectbox("Filtrar por agente:", ["Todos"] + list(USUARIOS.keys()))
-        
-        for i, item in enumerate(st.session_state.buzon):
-            if agente_filtro == "Todos" or item['agente'] == agente_filtro:
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    st.write(f"**[{item['fecha']}]** Agente {item['agente']}:")
-                    st.code(item['msj'])
-                with col2:
-                    st.write("") # Espacio para alinear
-                    st.write("")
-                    if st.button("Borrar", key=f"del_{i}"):
-                        st.session_state.buzon.pop(i)
-                        st.rerun()
-
-    if st.button("Cerrar Sesión"):
-        st.session_state.usuario = None
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state.login = False
+        st.session_state.modo_admin = False
         st.rerun()
