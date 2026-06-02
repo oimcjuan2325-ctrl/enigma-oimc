@@ -1,18 +1,18 @@
--import streamlit as st
+import streamlit as st
 import os
 import datetime
 import json
 
-# --- 1. CONFIGURACIÓN DE ACCESO ---
+# --- 1. CONFIGURACIÓN Y USUARIOS ---
 USUARIOS = {
     "Juan": "2313", "Asier": "2021", "Jesús": "1365", "Yolanda": "1460",
     "Mikel": "2013", "Gaizka": "9837", "Iñaki": "7467", "Erika": "7562",
     "Nahia": "9786", "Amets": "1053", "MAQUINA_ENIGMA": "2325"
 }
 
-# --- 2. MOTOR MATEMÁTICO: CODEX CELTA 2.0 ---
+# --- 2. MOTOR DEL CODEX CELTA 2.0 ---
 def calcular_desplazamiento(fecha):
-    # Número base derivado de tu esquema de cifrado numérico
+    # Número base derivado de tu esquema
     numero_base = 345324535554563 
     
     # Filtrado dinámico por mes
@@ -45,7 +45,7 @@ def motor_codex(texto, es_cifrado, fecha):
             resultado += c
     return resultado
 
-# --- 3. INTERFAZ Y LÓGICA DE NAVEGACIÓN ---
+# --- 3. INTERFAZ ---
 st.set_page_config(page_title="Central OIMC", layout="wide")
 
 if 'login' not in st.session_state: st.session_state.login = False
@@ -61,15 +61,13 @@ if not st.session_state.login:
             st.rerun()
         else: st.error("Acceso denegado")
 else:
-    # Barra lateral
     st.sidebar.title(f"Operativo: {st.session_state.user}")
     seccion = st.sidebar.radio("Navegación", ["Cifrar", "Descifrar", "Mis Archivos Cifrados"])
     
-    # Panel Máquina Enigma
+    # PANEL MAQUINA ENIGMA
     if st.session_state.user == "MAQUINA_ENIGMA":
         if st.sidebar.button("⚙️ Administración Central"): st.session_state.admin = True
     
-    # Lógica de las secciones
     if seccion == "Cifrar":
         st.subheader("Cifrar Mensaje")
         msg = st.text_area("Mensaje a cifrar")
@@ -103,9 +101,7 @@ else:
                 for l in f:
                     data = json.loads(l)
                     st.write(f"📅 **{data['fecha']}**: `{data['msg']}`")
-        else: st.info("No hay archivos guardados.")
 
-    # Botón de cierre
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.clear()
         st.rerun()
